@@ -1,6 +1,5 @@
 
 import React, { useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Image } from "react-native";
 import * as Haptics from "expo-haptics";
 import { colors, commonStyles } from "@/styles/commonStyles";
@@ -24,14 +23,10 @@ export default function LanguageScreen() {
     setSelectedLanguage(code);
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!selectedLanguage) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    // Save language selection
-    await AsyncStorage.setItem("selectedLanguage", selectedLanguage);
-    
-    router.push("/(onboarding)/auth-options");
+    router.push("/auth-options");
   };
 
   return (
@@ -65,12 +60,7 @@ export default function LanguageScreen() {
                 {lang.name}
               </Text>
               {selectedLanguage === lang.code && (
-                <IconSymbol 
-                  ios_icon_name="checkmark.circle.fill" 
-                  android_material_icon_name="check-circle" 
-                  size={24} 
-                  color={colors.primary} 
-                />
+                <IconSymbol name="checkmark.circle.fill" size={24} color={colors.primary} />
               )}
             </TouchableOpacity>
           ))}

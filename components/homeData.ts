@@ -1,4 +1,11 @@
+
 export const modalDemos = [
+  {
+    title: "Onboarding Flow",
+    description: "Language selection and auth options",
+    route: "/language",
+    color: "#FF6B35",
+  },
   {
     title: "Standard Modal",
     description: "Full screen modal presentation",
