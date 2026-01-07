@@ -3,22 +3,21 @@ import { Stack, usePathname } from "expo-router";
 import FloatingTabBar, { TabBarItem } from "@/components/FloatingTabBar";
 
 export default function TabLayout() {
-  const pathname = usePathname();
+  const pathnameRaw = usePathname();
+  const pathname = typeof pathnameRaw === "string" ? pathnameRaw : "";
 
-  // Tab routes (die echt tabs zijn)
   const tabs: TabBarItem[] = [
     { name: "(home)", route: "/(tabs)/(home)/home", icon: "home", label: "Home" },
     { name: "profile", route: "/(tabs)/profile", icon: "person", label: "Profile" },
   ];
 
-  // Toon tabbar NIET op onboarding/auth screens
-  const hideTabBar =
+  const isOnboardingOrAuth =
     pathname === "/(tabs)/(home)" ||
     pathname === "/(tabs)/(home)/" ||
-    pathname.includes("/(tabs)/(home)/auth-options") ||
-    pathname.includes("/(tabs)/(home)/email-signup") ||
-    pathname.includes("/(tabs)/(home)/login") ||
-    pathname.includes("/(tabs)/(home)/invite-code");
+    pathname.startsWith("/(tabs)/(home)/auth-options") ||
+    pathname.startsWith("/(tabs)/(home)/email-signup") ||
+    pathname.startsWith("/(tabs)/(home)/login") ||
+    pathname.startsWith("/(tabs)/(home)/invite-code");
 
   return (
     <>
@@ -27,7 +26,7 @@ export default function TabLayout() {
         <Stack.Screen name="profile" />
       </Stack>
 
-      {!hideTabBar && <FloatingTabBar tabs={tabs} />}
+      {!isOnboardingOrAuth && <FloatingTabBar tabs={tabs} />}
     </>
   );
 }
