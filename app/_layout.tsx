@@ -12,19 +12,19 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }}>
         {/* Main app */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" />
 
-        {/* Optional modals (als je ze gebruikt) */}
+        {/* Modals (alleen laten staan als deze routes écht bestaan) */}
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
         <Stack.Screen name="formsheet" options={{ presentation: "formSheet" }} />
         <Stack.Screen
           name="transparent-modal"
-          options={{ presentation: "transparentModal", headerShown: false }}
+          options={{ presentation: "transparentModal" }}
         />
 
-        {/* OAuth screens (als ze bestaan) */}
-        <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-        <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+        {/* OAuth screens (alleen laten staan als deze routes écht bestaan) */}
+        <Stack.Screen name="auth-popup" />
+        <Stack.Screen name="auth-callback" />
       </Stack>
     </GestureHandlerRootView>
   );
