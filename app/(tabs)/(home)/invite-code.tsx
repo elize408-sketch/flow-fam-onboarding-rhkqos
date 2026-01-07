@@ -1,56 +1,76 @@
 
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from "react-native";
-import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  TextInput,
+  KeyboardAvoidingView,
+  ActivityIndicator,
+} from "react-native";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 export default function InviteCodeScreen() {
   const router = useRouter();
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!code.trim()) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLoading(true);
+
+    // TODO: Implement invite code validation
+    setTimeout(() => {
+      setLoading(false);
+      alert("Uitnodigingscode functionaliteit komt binnenkort!");
+    }, 1000);
+  };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <IconSymbol name="chevron.left" size={24} color={colors.primary} />
+        </TouchableOpacity>
+
+        <Text style={styles.title}>Uitnodigingscode</Text>
+        <Text style={styles.subtitle}>Voer je uitnodigingscode in</Text>
+
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Uitnodigingscode"
+            value={code}
+            onChangeText={setCode}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
+            style={[styles.submitButton, !code.trim() && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={!code.trim() || loading}
           >
-            <IconSymbol
-              ios_icon_name="chevron.left"
-              android_material_icon_name="arrow-back"
-              size={24}
-              color={colors.primary}
-            />
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitButtonText}>Doorgaan</Text>
+            )}
           </TouchableOpacity>
-
-          <View style={styles.header}>
-            <View style={[styles.iconCircle, { backgroundColor: colors.secondary + '15' }]}>
-              <IconSymbol
-                ios_icon_name="ticket.fill"
-                android_material_icon_name="mail"
-                size={40}
-                color={colors.secondary}
-              />
-            </View>
-            <Text style={commonStyles.title}>Uitnodigingscode</Text>
-            <Text style={styles.subtitle}>
-              Deze functie wordt binnenkort toegevoegd
-            </Text>
-          </View>
-
-          <View style={styles.placeholderCard}>
-            <Text style={styles.placeholderText}>
-              Hier komt het uitnodigingscode formulier
-            </Text>
-          </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -59,59 +79,51 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: Platform.OS === 'android' ? 80 : 60,
-    paddingBottom: 40,
-  },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
+    paddingTop: Platform.OS === "ios" ? 80 : 60,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.highlight,
+    alignSelf: "flex-start",
+    padding: 8,
+    marginBottom: 20,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.highlight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
     color: colors.textSecondary,
-    marginTop: 8,
+    marginBottom: 32,
   },
-  placeholderCard: {
+  form: {
+    gap: 16,
+  },
+  input: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.highlight,
-    borderStyle: 'dashed',
-  },
-  placeholderText: {
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    textAlign: 'center',
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  submitButtonDisabled: {
+    backgroundColor: colors.border,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

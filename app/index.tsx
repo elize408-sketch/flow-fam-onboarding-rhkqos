@@ -1,6 +1,42 @@
 
 import { Redirect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import { View, ActivityIndicator } from "react-native";
 
 export default function Index() {
-  return <Redirect href="/(tabs)/(home)" />;
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+
+  useEffect(() => {
+    checkOnboarding();
+  }, []);
+
+  const checkOnboarding = async () => {
+    try {
+      // Clear onboarding completion to force showing onboarding
+      await AsyncStorage.removeItem("onboardingComplete");
+      
+      const completed = await AsyncStorage.getItem("onboardingComplete");
+      setHasCompletedOnboarding(completed === "true");
+    } catch (error) {
+      console.error("Error checking onboarding status:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (hasCompletedOnboarding) {
+    return <Redirect href="/(tabs)/(home)" />;
+  }
+
+  return <Redirect href="/(onboarding)/language" />;
 }
