@@ -3,7 +3,9 @@
   "name": "Natively",
   "version": "1.0.0",
   "main": "expo-router/entry",
+  "private": true,
   "scripts": {
+    "start": "EXPO_NO_TELEMETRY=1 expo start",
     "dev": "EXPO_NO_TELEMETRY=1 expo start --tunnel",
     "android": "EXPO_NO_TELEMETRY=1 expo start --android",
     "ios": "EXPO_NO_TELEMETRY=1 expo start --ios",
@@ -82,6 +84,5 @@
   },
   "resolutions": {
     "@expo/prebuild-config": "latest"
-  },
-  "private": true
+  }
 }
