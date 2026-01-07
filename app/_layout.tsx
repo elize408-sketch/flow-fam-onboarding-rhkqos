@@ -1,3 +1,4 @@
+
 import "react-native-reanimated";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
@@ -16,8 +17,6 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Constants from "expo-constants";
-import { BACKEND_URL } from "@/utils/api";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -38,14 +37,6 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
-
-  // Log backend URL on startup for debugging
-  useEffect(() => {
-    console.log("=== Backend Configuration ===");
-    console.log("Backend URL from app.json:", Constants.expoConfig?.extra?.backendUrl);
-    console.log("Backend URL (BACKEND_URL):", BACKEND_URL);
-    console.log("============================");
-  }, []);
 
   React.useEffect(() => {
     if (
@@ -95,7 +86,7 @@ export default function RootLayout() {
         >
           <AuthProvider>
             <WidgetProvider>
-              <GestureHandlerRootView>
+              <GestureHandlerRootView style={{ flex: 1 }}>
               <Stack>
                 {/* Main app with tabs */}
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -122,19 +113,6 @@ export default function RootLayout() {
                   name="transparent-modal"
                   options={{
                     presentation: "transparentModal",
-                    headerShown: false,
-                  }}
-                />
-                {/* Auth screens for OAuth popup flow */}
-                <Stack.Screen
-                  name="auth-popup"
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="auth-callback"
-                  options={{
                     headerShown: false,
                   }}
                 />

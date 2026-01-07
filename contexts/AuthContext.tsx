@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
 import { authClient, storeWebBearerToken } from "@/lib/auth";
@@ -24,7 +25,18 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function openOAuthPopup(provider: string): Promise<string> {
+  // Only run on web platform
+  if (Platform.OS !== "web") {
+    return Promise.reject(new Error("OAuth popup is only available on web"));
+  }
+
   return new Promise((resolve, reject) => {
+    // Type guard to ensure we're on web
+    if (typeof window === "undefined") {
+      reject(new Error("Window object not available"));
+      return;
+    }
+
     const popupUrl = `${window.location.origin}/auth-popup?provider=${provider}`;
     const width = 500;
     const height = 600;
@@ -77,22 +89,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUser = async () => {
     try {
       setLoading(true);
+      console.log("Fetching user session...");
       const session = await authClient.getSession();
+      console.log("Session fetched:", session);
       if (session?.data?.user) {
         setUser(session.data.user as User);
+        console.log("User set:", session.data.user);
       } else {
         setUser(null);
+        console.log("No user session found");
       }
     } catch (error) {
       console.error("Failed to fetch user:", error);
       setUser(null);
     } finally {
       setLoading(false);
+      console.log("Auth loading complete");
     }
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
+      console.log("Signing in with email:", email);
       await authClient.signIn.email({ email, password });
       await fetchUser();
     } catch (error) {
@@ -103,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
+      console.log("Signing up with email:", email);
       await authClient.signUp.email({
         email,
         password,
@@ -117,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
+      console.log("Signing in with Google...");
       if (Platform.OS === "web") {
         const token = await openOAuthPopup("google");
         storeWebBearerToken(token);
@@ -136,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithApple = async () => {
     try {
+      console.log("Signing in with Apple...");
       if (Platform.OS === "web") {
         const token = await openOAuthPopup("apple");
         storeWebBearerToken(token);
@@ -155,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGitHub = async () => {
     try {
+      console.log("Signing in with GitHub...");
       if (Platform.OS === "web") {
         const token = await openOAuthPopup("github");
         storeWebBearerToken(token);
@@ -174,13 +196,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log("Signing out...");
       await authClient.signOut();
       setUser(null);
+      console.log("User signed out");
     } catch (error) {
       console.error("Sign out failed:", error);
       throw error;
     }
   };
+
+  // Show a loading fallback while auth is initializing
+  if (loading) {
+    console.log("Auth provider is loading...");
+  }
 
   return (
     <AuthContext.Provider
