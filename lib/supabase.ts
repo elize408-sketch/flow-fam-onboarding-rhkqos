@@ -1,71 +1,51 @@
-import 'react-native-url-polyfill/auto';
-import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import "react-native-url-polyfill/auto";
+import { createClient } from "@supabase/supabase-js";
+import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Key exists:', !!supabaseAnonKey);
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase environment variables are missing');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: Platform.OS === 'web' ? undefined : SecureStore,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: Platform.OS === 'web',
-  },
-});
-import 'react-native-url-polyfill/auto';
-import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
-
-// Custom storage adapter for Supabase using SecureStore
+// ---- SecureStore adapter (Supabase verwacht deze interface) ----
 const ExpoSecureStoreAdapter = {
-  getItem: async (key: string) => {
-    try {
-      return await SecureStore.getItemAsync(key);
-    } catch (error) {
-      console.log('Error getting item from SecureStore:', error);
-      return null;
-    }
-  },
-  setItem: async (key: string, value: string) => {
-    try {
-      await SecureStore.setItemAsync(key, value);
-    } catch (error) {
-      console.log('Error setting item in SecureStore:', error);
-    }
-  },
-  removeItem: async (key: string) => {
-    try {
-      await SecureStore.deleteItemAsync(key);
-    } catch (error) {
-      console.log('Error removing item from SecureStore:', error);
-    }
-  },
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
-// Get Supabase credentials from environment
-// TODO: Backend Integration - These will be provided by the backend configuration
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// ---- Config ophalen uit app.json (extra) + fallback naar env ----
+const extra =
+  (Constants.expoConfig?.extra as Record<string, unknown> | undefined) ??
+  (Constants.manifest?.extra as Record<string, unknown> | undefined) ??
+  {};
 
-// Create Supabase client with SecureStore for session persistence
+const supabaseUrl =
+  (process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined) ||
+  (extra.supabaseUrl as string | undefined);
+
+const supabaseAnonKey =
+  (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined) ||
+  (extra.supabaseAnonKey as string | undefined);
+
+// ---- Debug logs (veilig: key niet loggen) ----
+console.log("[Supabase] URL configured:", !!supabaseUrl);
+console.log("[Supabase] Anon key configured:", !!supabaseAnonKey);
+
+if (!supabaseUrl) {
+  throw new Error(
+    "supabaseUrl is required. Zet 'extra.supabaseUrl' in app.json of EXPO_PUBLIC_SUPABASE_URL."
+  );
+}
+if (!supabaseAnonKey) {
+  throw new Error(
+    "supabaseAnonKey is required. Zet 'extra.supabaseAnonKey' in app.json of EXPO_PUBLIC_SUPABASE_ANON_KEY."
+  );
+}
+
+// ---- Client ----
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: Platform.OS !== 'web' ? ExpoSecureStoreAdapter : undefined,
+    storage: Platform.OS === "web" ? undefined : ExpoSecureStoreAdapter,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: Platform.OS === "web",
   },
 });
-
-console.log('Supabase client initialized with URL:', supabaseUrl ? 'configured' : 'missing');
