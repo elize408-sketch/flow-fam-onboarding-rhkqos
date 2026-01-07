@@ -1,168 +1,133 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Image } from "react-native";
 import * as Haptics from "expo-haptics";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { colors, commonStyles } from "@/styles/commonStyles";
-import { IconSymbol } from "@/components/IconSymbol";
 import { useRouter } from "expo-router";
 
 const LANGUAGES = [
-  { code: "en", name: "Engels" },
-  { code: "es", name: "Spaans" },
-  { code: "fr", name: "Frans" },
-  { code: "de", name: "Duits" },
-  { code: "nl", name: "Nederlands" },
+  { code: "en", label: "Engels" },
+  { code: "es", label: "Spaans" },
+  { code: "fr", label: "Frans" },
+  { code: "de", label: "Duits" },
+  { code: "nl", label: "Nederlands" },
 ];
-
-export default function LanguageScreen() {
-  const router = useRouter();
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
-
-  const handleLanguageSelect = (code: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedLanguage(code);
-  };
-
-  const handleNext = async () => {
-    if (!selectedLanguage) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    // Save language selection
-    await AsyncStorage.setItem("selectedLanguage", selectedLanguage);
-    
-    router.push("/(onboarding)/auth-options");
-  };
-
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.content}>
-        <Image 
-          source={require("@/assets/images/128477ea-8dd8-4186-9fc2-469b21f2f598.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        
-        <Text style={styles.title}>Welkom bij Flow Fam</Text>
-        <Text style={styles.subtitle}>Kies je taal</Text>
-
-        <View style={styles.languageList}>
-          {LANGUAGES.map((lang) => (
-            <TouchableOpacity
-              key={lang.code}
-              style={[
-                styles.languageOption,
-                selectedLanguage === lang.code && styles.languageOptionSelected,
-              ]}
-              onPress={() => handleLanguageSelect(lang.code)}
-            >
-              <Text
-                style={[
-                  styles.languageText,
-                  selectedLanguage === lang.code && styles.languageTextSelected,
-                ]}
-              >
-                {lang.name}
-              </Text>
-              {selectedLanguage === lang.code && (
-                <IconSymbol 
-                  ios_icon_name="checkmark.circle.fill" 
-                  android_material_icon_name="check-circle" 
-                  size={24} 
-                  color={colors.primary} 
-                />
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.nextButton, !selectedLanguage && styles.nextButtonDisabled]}
-        onPress={handleNext}
-        disabled={!selectedLanguage}
-      >
-        <Text style={styles.nextButtonText}>Volgende</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
-}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  contentContainer: {
-    flexGrow: 1,
-    paddingBottom: 40,
+    paddingHorizontal: 24,
+    justifyContent: "space-between",
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
+    justifyContent: "center",
+    alignItems: "center",
   },
   logo: {
     width: 120,
     height: 120,
-    alignSelf: "center",
     marginBottom: 32,
   },
   title: {
     fontSize: 32,
     fontWeight: "700",
     color: colors.text,
+    marginBottom: 12,
     textAlign: "center",
-    marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
     color: colors.textSecondary,
-    textAlign: "center",
     marginBottom: 40,
+    textAlign: "center",
   },
-  languageList: {
-    gap: 12,
-  },
-  languageOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    backgroundColor: colors.surface,
+  pickerContainer: {
+    width: "100%",
+    maxWidth: 400,
+    backgroundColor: colors.cardBackground,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
   },
-  languageOptionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: `${colors.primary}10`,
-  },
-  languageText: {
-    fontSize: 17,
+  picker: {
+    height: 50,
     color: colors.text,
-    fontWeight: "500",
   },
-  languageTextSelected: {
-    color: colors.primary,
-    fontWeight: "600",
+  buttonContainer: {
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
   },
-  nextButton: {
-    marginHorizontal: 24,
-    marginTop: 20,
+  button: {
+    ...commonStyles.button,
     backgroundColor: colors.primary,
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center",
-    ...commonStyles.shadow,
   },
-  nextButtonDisabled: {
-    backgroundColor: colors.disabled,
-    opacity: 0.5,
-  },
-  nextButtonText: {
+  buttonText: {
+    ...commonStyles.buttonText,
     color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "600",
   },
 });
+
+export default function LanguageScreen() {
+  const router = useRouter();
+  const [selectedLanguage, setSelectedLanguage] = useState("en"); // Default to English
+
+  useEffect(() => {
+    // Load saved language preference
+    AsyncStorage.getItem("app_language").then((saved) => {
+      if (saved) {
+        setSelectedLanguage(saved);
+      }
+    });
+  }, []);
+
+  const handleNext = async () => {
+    if (Platform.OS !== "web") {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    
+    // Save language selection
+    await AsyncStorage.setItem("app_language", selectedLanguage);
+    
+    router.push("/(tabs)/(home)/auth-options");
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <Image
+          source={require("@/assets/images/final_quest_240x240.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Welkom bij Flow Fam</Text>
+        <Text style={styles.subtitle}>Kies je taal</Text>
+        
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedLanguage}
+            onValueChange={(value) => setSelectedLanguage(value)}
+            style={styles.picker}
+          >
+            {LANGUAGES.map((lang) => (
+              <Picker.Item
+                key={lang.code}
+                label={lang.label}
+                value={lang.code}
+              />
+            ))}
+          </Picker>
+        </View>
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.button} onPress={handleNext}>
+          <Text style={styles.buttonText}>Volgende</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
