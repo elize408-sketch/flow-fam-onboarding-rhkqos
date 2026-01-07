@@ -2,6 +2,7 @@ import { createApplication } from "@specific-dev/framework";
 import * as appSchema from './db/schema.js';
 import * as authSchema from './db/auth-schema.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerFamilyRoutes } from './routes/families.js';
 
 // Combine both schemas
 const schema = { ...appSchema, ...authSchema };
@@ -18,6 +19,7 @@ app.withAuth();
 // Register routes - add your route modules here
 // IMPORTANT: Always use registration functions to avoid circular dependency issues
 registerAuthRoutes(app);
+registerFamilyRoutes(app);
 
 await app.run();
 app.logger.info('Application running');
