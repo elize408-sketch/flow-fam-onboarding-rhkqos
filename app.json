@@ -7,16 +7,19 @@
     "icon": "./assets/images/final_quest_240x240.png",
     "scheme": "natively",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+
     "splash": {
       "image": "./assets/images/final_quest_240x240.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.natively.app"
     },
+
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/final_quest_240x240.png",
@@ -24,11 +27,13 @@
       },
       "package": "com.natively.app"
     },
+
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/final_quest_240x240.png"
     },
+
     "plugins": [
       "expo-router",
       [
@@ -38,17 +43,21 @@
         }
       ]
     ],
+
     "experiments": {
       "typedRoutes": true
     },
+
     "extra": {
       "router": {
         "origin": false
       },
-      "eas": {
-        "projectId": "your-project-id"
-      },
-      "backendUrl": "https://22m6pxpwrn7zbf8z6sj655eutz2eucag.app.specular.dev"
+
+      "backendUrl": "https://22m6pxpwrn7zbf8z6sj655eutz2eucag.app.specular.dev",
+
+      "supabaseUrl": "https://fupificamwvconjlkgiz.supabase.co",
+
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cGlmaWNhbXd2Y29uamxrZ2l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3NzM2NjYsImV4cCI6MjA4MzM0OTY2Nn0.2KGDSU3LyYe_BcbuwjakwxtXSvLdjEJZHjhYdjC0IEM"
     }
   }
 }
