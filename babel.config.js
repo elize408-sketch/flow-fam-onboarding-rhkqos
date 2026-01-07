@@ -1,3 +1,4 @@
+
 module.exports = function (api) {
   api.cache(true);
 
@@ -50,8 +51,8 @@ module.exports = function (api) {
       // Other babel plugins
       "@babel/plugin-proposal-export-namespace-from",
 
-      // ✅ MOET ABSOLUUT ALS LAATSTE
-      "react-native-worklets/plugin",
+      // ⚠️ TEMPORARILY DISABLED TO TEST SILENT CRASH
+      // "react-native-worklets/plugin",
     ],
   };
 };

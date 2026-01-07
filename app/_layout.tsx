@@ -1,21 +1,18 @@
 
-import React from 'react';
-import { Stack } from 'expo-router';
-import { View, ActivityIndicator, Text } from 'react-native';
+import React from "react";
+import { Stack } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-function LoadingScreen({ label }: { label: string }) {
-  return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <ActivityIndicator />
-      <Text style={{ marginTop: 12, opacity: 0.7 }}>{label}</Text>
-    </View>
-  );
-}
+console.log('✅ app/_layout.tsx is loading');
 
 export default function RootLayout() {
+  console.log('✅ RootLayout component is rendering');
+  
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-    </Stack>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+      </Stack>
+    </GestureHandlerRootView>
   );
 }
