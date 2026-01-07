@@ -5,27 +5,23 @@ import { View, ActivityIndicator } from "react-native";
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
-    checkOnboarding();
+    (async () => {
+      try {
+        const completed = await AsyncStorage.getItem("onboardingComplete");
+        setHasCompletedOnboarding(completed === "true");
+      } catch (error) {
+        console.error("Error checking onboarding status:", error);
+        setHasCompletedOnboarding(false);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
-  const checkOnboarding = async () => {
-    try {
-      // Clear onboarding completion to force showing onboarding
-      await AsyncStorage.removeItem("onboardingComplete");
-      
-      const completed = await AsyncStorage.getItem("onboardingComplete");
-      setHasCompletedOnboarding(completed === "true");
-    } catch (error) {
-      console.error("Error checking onboarding status:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
+  if (isLoading || hasCompletedOnboarding === null) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
@@ -33,9 +29,7 @@ export default function Index() {
     );
   }
 
-  if (hasCompletedOnboarding) {
-    return <Redirect href="/(tabs)/(home)" />;
-  }
-
-  return <Redirect href="/(onboarding)/language" />;
+  return hasCompletedOnboarding
+    ? <Redirect href="/(tabs)/(home)" />
+    : <Redirect href="/(onboarding)/language" />;
 }
