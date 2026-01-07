@@ -8,23 +8,49 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, signOut, loading } = useAuth();
 
   const handleLogout = async () => {
-    try {
-      await signOut();
-      router.replace("/(tabs)/(home)/");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    Alert.alert(
+      "Uitloggen",
+      "Weet je zeker dat je wilt uitloggen?",
+      [
+        {
+          text: "Annuleren",
+          style: "cancel",
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        },
+        {
+          text: "Uitloggen",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              await signOut();
+              router.replace("/(tabs)/(home)/");
+            } catch (error) {
+              console.error("Logout error:", error);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert("Fout", "Er is een fout opgetreden bij het uitloggen. Probeer het opnieuw.");
+            }
+          }
+        }
+      ]
+    );
   };
 
   if (loading) {

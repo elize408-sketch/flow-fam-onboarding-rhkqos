@@ -1,10 +1,11 @@
 
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useAuth } from "@/contexts/AuthContext";
+import * as Haptics from "expo-haptics";
 
 export default function GoogleAuthScreen() {
   const router = useRouter();
@@ -13,19 +14,37 @@ export default function GoogleAuthScreen() {
   const [error, setError] = useState("");
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError("");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Show coming soon alert
+    Alert.alert(
+      "Binnenkort beschikbaar",
+      "Google authenticatie wordt binnenkort toegevoegd. Gebruik voorlopig email + wachtwoord om in te loggen.",
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        }
+      ]
+    );
 
-    try {
-      await signInWithGoogle();
-      // Navigation will happen automatically after successful auth
-      router.replace("/(tabs)/(home)/home");
-    } catch (err: any) {
-      console.error("Google sign in error:", err);
-      setError(err.message || "Er is een fout opgetreden bij het inloggen met Google");
-    } finally {
-      setLoading(false);
-    }
+    // Uncomment when backend is ready:
+    // setLoading(true);
+    // setError("");
+    // try {
+    //   // TODO: Backend Integration - Call Google OAuth endpoint
+    //   await signInWithGoogle();
+    //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    //   router.replace("/(tabs)/(home)/home");
+    // } catch (err: any) {
+    //   console.error("Google sign in error:", err);
+    //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    //   setError(err.message || "Er is een fout opgetreden bij het inloggen met Google");
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   return (
@@ -37,7 +56,10 @@ export default function GoogleAuthScreen() {
         <View style={styles.content}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.back();
+            }}
             activeOpacity={0.7}
             disabled={loading}
           >
@@ -96,6 +118,18 @@ export default function GoogleAuthScreen() {
               </>
             )}
           </TouchableOpacity>
+
+          <View style={styles.infoCard}>
+            <IconSymbol
+              ios_icon_name="info.circle"
+              android_material_icon_name="info"
+              size={20}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.infoText}>
+              Deze functie wordt binnenkort toegevoegd. Gebruik voorlopig email + wachtwoord.
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -182,5 +216,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#EA4335',
+  },
+  infoCard: {
+    backgroundColor: colors.highlight,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    gap: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 20,
   },
 });

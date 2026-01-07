@@ -13,6 +13,13 @@ module.exports = function (api) {
   return {
     presets: ["babel-preset-expo"],
     plugins: [
+      // Editable components (optioneel, development only)
+      ...EDITABLE_COMPONENTS,
+
+      // ✅ Expo Router (VERPLICHT voor app/ routing)
+      "expo-router/babel",
+
+      // Module resolver (aliases zoals @/contexts etc.)
       [
         "module-resolver",
         {
@@ -39,9 +46,12 @@ module.exports = function (api) {
           },
         },
       ],
-      ...EDITABLE_COMPONENTS,
+
+      // Other babel plugins
       "@babel/plugin-proposal-export-namespace-from",
-      "react-native-worklets/plugin", // react-native-worklets/plugin must be listed last!
+
+      // ✅ MOET ABSOLUUT ALS LAATSTE
+      "react-native-worklets/plugin",
     ],
   };
 };

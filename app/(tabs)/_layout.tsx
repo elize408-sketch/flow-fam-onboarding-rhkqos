@@ -1,37 +1,32 @@
-import React from 'react';
-import { Stack } from 'expo-router';
-import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
+import React from "react";
+import { Stack, usePathname } from "expo-router";
+import FloatingTabBar, { TabBarItem } from "@/components/FloatingTabBar";
 
 export default function TabLayout() {
-  // Define the tabs configuration
+  const pathnameRaw = usePathname();
+  const pathname = typeof pathnameRaw === "string" ? pathnameRaw : "";
+
   const tabs: TabBarItem[] = [
-    {
-      name: '(home)',
-      route: '/(tabs)/(home)/',
-      icon: 'home',
-      label: 'Home',
-    },
-    {
-      name: 'profile',
-      route: '/(tabs)/profile',
-      icon: 'person',
-      label: 'Profile',
-    },
+    { name: "(home)", route: "/(tabs)/(home)/home", icon: "home", label: "Home" },
+    { name: "profile", route: "/(tabs)/profile", icon: "person", label: "Profile" },
   ];
 
-  // For Android and Web, use Stack navigation with custom floating tab bar
+  const isOnboardingOrAuth =
+    pathname === "/(tabs)/(home)" ||
+    pathname === "/(tabs)/(home)/" ||
+    pathname.startsWith("/(tabs)/(home)/auth-options") ||
+    pathname.startsWith("/(tabs)/(home)/email-signup") ||
+    pathname.startsWith("/(tabs)/(home)/login") ||
+    pathname.startsWith("/(tabs)/(home)/invite-code");
+
   return (
     <>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'none', // Remove fade animation to prevent black screen flash
-        }}
-      >
-        <Stack.Screen key="home" name="(home)" />
-        <Stack.Screen key="profile" name="profile" />
+      <Stack screenOptions={{ headerShown: false, animation: "none" }}>
+        <Stack.Screen name="(home)" />
+        <Stack.Screen name="profile" />
       </Stack>
-      <FloatingTabBar tabs={tabs} />
+
+      {!isOnboardingOrAuth && <FloatingTabBar tabs={tabs} />}
     </>
   );
 }
