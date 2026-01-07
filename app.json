@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Natively",
-    "slug": "Natively",
+    "name": "Flow Fam onboarding",
+    "slug": "Flow Fam onboarding",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -12,7 +12,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.Natively",
@@ -20,7 +19,6 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/natively-dark.png",
@@ -29,12 +27,10 @@
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.Natively"
     },
-
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
       "bundler": "metro"
     },
-
     "plugins": [
       "expo-font",
       "expo-router",
@@ -44,10 +40,10 @@
     "experiments": {
       "typedRoutes": true
     },
-
     "extra": {
       "router": {},
       "backendUrl": "https://22m6pxpwrn7zbf8z6sj655eutz2eucag.app.specular.dev"
     }
-  }
+  },
+  "scheme": "Flow Fam onboarding"
 }
