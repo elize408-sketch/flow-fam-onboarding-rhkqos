@@ -1,61 +1,85 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
-import { Session, User, AuthError } from "@supabase/supabase-js";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  ReactNode,
+} from "react";
+import { AuthError, Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-interface SupabaseAuthContextType {
+type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
+
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
-}
 
-const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(undefined);
+  // Handig voor debug/force refresh
+  refreshSession: () => Promise<void>;
+};
+
+const SupabaseAuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function useSupabaseAuth() {
   const ctx = useContext(SupabaseAuthContext);
-  if (!ctx) throw new Error("useSupabaseAuth must be used within a SupabaseAuthProvider");
+  if (!ctx) throw new Error("useSupabaseAuth must be used within SupabaseAuthProvider");
   return ctx;
 }
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const mountedRef = useRef(true);
+
+  const applySession = (next: Session | null) => {
+    setSession(next);
+    setUser(next?.user ?? null);
+  };
+
+  const refreshSession = async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) console.log("Supabase getSession error:", error.message);
+
+      if (!mountedRef.current) return;
+      applySession(data.session ?? null);
+    } catch (e) {
+      console.log("Supabase getSession exception:", e);
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
-    const init = async () => {
-      try {
- решений
-        const { data, error } = await supabase.auth.getSession();
-        if (error) console.log("getSession error:", error.message);
+    // 1) Initial session load
+    refreshSession();
 
-        if (!mounted) return;
-        setSession(data.session ?? null);
-        setUser(data.session?.user ?? null);
-      } catch (e) {
-        console.log("getSession exception:", e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
+    // 2) Auth state listener
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mountedRef.current) return;
 
-    init();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      // Let op: geen router logic hier. Alleen state.
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
+      // Update state on any auth change
+      applySession(nextSession);
       setLoading(false);
+
+      // No routing here on purpose (prevents blank screen issues)
+      console.log("Auth event:", _event, nextSession ? "session exists" : "no session");
     });
 
     return () => {
-      mounted = false;
-      authListener.subscription.unsubscribe();
+      mountedRef.current = false;
+      data.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signUp = async (email: string, password: string) => {
@@ -85,8 +109,16 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const value = useMemo(
-    () => ({ session, user, loading, signUp, signIn, signOut }),
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      session,
+      user,
+      loading,
+      signUp,
+      signIn,
+      signOut,
+      refreshSession,
+    }),
     [session, user, loading]
   );
 
