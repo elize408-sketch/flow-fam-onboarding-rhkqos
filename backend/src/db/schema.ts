@@ -8,6 +8,7 @@ import { user } from './auth-schema.js';
 export const userProfile = pgTable('user_profile', {
   id: text('id').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
   familySetupComplete: boolean('family_setup_complete').default(false).notNull(),
+  familyStyleComplete: boolean('family_style_complete').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -43,6 +44,8 @@ export const familyMembers = pgTable('family_members', {
   userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
   name: text('name').notNull(),
   role: text('role', { enum: ['parent', 'partner', 'child'] }).notNull(),
+  color: text('color').notNull().default('#4F46E5'),
+  avatarUrl: text('avatar_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
