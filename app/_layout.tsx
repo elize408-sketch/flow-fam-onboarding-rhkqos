@@ -1,14 +1,14 @@
-
+import "react-native-reanimated";
 import React from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "@/contexts/AuthContext";
 
-console.log('✅ app/_layout.tsx is loading');
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+};
 
 export default function RootLayout() {
-  console.log('✅ RootLayout component is rendering');
-  
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>

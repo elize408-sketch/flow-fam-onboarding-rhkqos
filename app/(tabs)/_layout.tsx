@@ -3,25 +3,33 @@ import { Stack, usePathname } from "expo-router";
 import FloatingTabBar, { TabBarItem } from "@/components/FloatingTabBar";
 
 export default function TabLayout() {
-  const pathnameRaw = usePathname();
-  const pathname = typeof pathnameRaw === "string" ? pathnameRaw : "";
+  const pathname = usePathname() ?? "";
 
   const tabs: TabBarItem[] = [
-    { name: "(home)", route: "/(tabs)/(home)/home", icon: "home", label: "Home" },
-    { name: "profile", route: "/(tabs)/profile", icon: "person", label: "Profile" },
+    {
+      name: "(home)",
+      route: "/(tabs)/(home)", // ✅ FIX: geen /home
+      icon: "home",
+      label: "Home",
+    },
+    {
+      name: "profile",
+      route: "/(tabs)/profile",
+      icon: "person",
+      label: "Profile",
+    },
   ];
 
   const isOnboardingOrAuth =
     pathname === "/(tabs)/(home)" ||
-    pathname === "/(tabs)/(home)/" ||
-    pathname.startsWith("/(tabs)/(home)/auth-options") ||
-    pathname.startsWith("/(tabs)/(home)/email-signup") ||
+    pathname.startsWith("/(tabs)/(home)/auth") ||
+    pathname.startsWith("/(tabs)/(home)/email") ||
     pathname.startsWith("/(tabs)/(home)/login") ||
-    pathname.startsWith("/(tabs)/(home)/invite-code");
+    pathname.startsWith("/(tabs)/(home)/invite");
 
   return (
     <>
-      <Stack screenOptions={{ headerShown: false, animation: "none" }}>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(home)" />
         <Stack.Screen name="profile" />
       </Stack>
