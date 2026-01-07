@@ -1,12 +1,109 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/IconSymbol";
 import { GlassView } from "expo-glass-effect";
 import { useTheme } from "@react-navigation/native";
+import { useAuth } from "@/contexts/AuthContext";
+import { authenticatedGet } from "@/utils/api";
+import { useRouter } from "expo-router";
+
+interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  image?: string;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function ProfileScreen() {
   const theme = useTheme();
+  const router = useRouter();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchProfile();
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+      console.log("[Profile] Fetching user profile from /api/users/me");
+      const data = await authenticatedGet<UserProfile>("/api/users/me");
+      console.log("[Profile] Profile data received:", data);
+      setProfile(data);
+    } catch (err: any) {
+      console.error("[Profile] Error fetching profile:", err);
+      setError(err.message || "Failed to load profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace("/(tabs)/(home)/");
+    } catch (err: any) {
+      console.error("[Profile] Sign out error:", err);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.loadingText, { color: theme.colors.text }]}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <View style={styles.centerContainer}>
+          <IconSymbol ios_icon_name="person.circle" android_material_icon_name="person" size={80} color={theme.colors.primary} />
+          <Text style={[styles.notAuthText, { color: theme.colors.text }]}>Please sign in to view your profile</Text>
+          <TouchableOpacity
+            style={[styles.signInButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => router.push("/(tabs)/(home)/auth-options")}
+          >
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <View style={styles.centerContainer}>
+          <IconSymbol ios_icon_name="exclamationmark.triangle" android_material_icon_name="warning" size={60} color="#EF4444" />
+          <Text style={[styles.errorText, { color: theme.colors.text }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={fetchProfile}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
@@ -21,9 +118,26 @@ export default function ProfileScreen() {
           styles.profileHeader,
           Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
         ]} glassEffectStyle="regular">
-          <IconSymbol ios_icon_name="person.circle.fill" android_material_icon_name="person" size={80} color={theme.colors.primary} />
-          <Text style={[styles.name, { color: theme.colors.text }]}>John Doe</Text>
-          <Text style={[styles.email, { color: theme.dark ? '#98989D' : '#666' }]}>john.doe@example.com</Text>
+          {profile?.image ? (
+            <View style={styles.avatarContainer}>
+              {/* TODO: Add image component when needed */}
+              <IconSymbol ios_icon_name="person.circle.fill" android_material_icon_name="person" size={80} color={theme.colors.primary} />
+            </View>
+          ) : (
+            <IconSymbol ios_icon_name="person.circle.fill" android_material_icon_name="person" size={80} color={theme.colors.primary} />
+          )}
+          <Text style={[styles.name, { color: theme.colors.text }]}>
+            {profile?.name || "User"}
+          </Text>
+          <Text style={[styles.email, { color: theme.dark ? '#98989D' : '#666' }]}>
+            {profile?.email}
+          </Text>
+          {profile?.emailVerified && (
+            <View style={styles.verifiedBadge}>
+              <IconSymbol ios_icon_name="checkmark.seal.fill" android_material_icon_name="verified" size={16} color="#10B981" />
+              <Text style={styles.verifiedText}>Verified</Text>
+            </View>
+          )}
         </GlassView>
 
         <GlassView style={[
@@ -31,14 +145,26 @@ export default function ProfileScreen() {
           Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
         ]} glassEffectStyle="regular">
           <View style={styles.infoRow}>
-            <IconSymbol ios_icon_name="phone.fill" android_material_icon_name="phone" size={20} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>+1 (555) 123-4567</Text>
+            <IconSymbol ios_icon_name="calendar" android_material_icon_name="calendar-today" size={20} color={theme.dark ? '#98989D' : '#666'} />
+            <Text style={[styles.infoText, { color: theme.colors.text }]}>
+              Member since {new Date(profile?.createdAt || "").toLocaleDateString()}
+            </Text>
           </View>
           <View style={styles.infoRow}>
-            <IconSymbol ios_icon_name="location.fill" android_material_icon_name="location-on" size={20} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>San Francisco, CA</Text>
+            <IconSymbol ios_icon_name="clock" android_material_icon_name="schedule" size={20} color={theme.dark ? '#98989D' : '#666'} />
+            <Text style={[styles.infoText, { color: theme.colors.text }]}>
+              Last updated {new Date(profile?.updatedAt || "").toLocaleDateString()}
+            </Text>
           </View>
         </GlassView>
+
+        <TouchableOpacity
+          style={[styles.signOutButton, { backgroundColor: '#EF4444' }]}
+          onPress={handleSignOut}
+        >
+          <IconSymbol ios_icon_name="arrow.right.square" android_material_icon_name="logout" size={20} color="#FFFFFF" />
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -58,12 +184,64 @@ const styles = StyleSheet.create({
   contentContainerWithTabBar: {
     paddingBottom: 100, // Extra padding for floating tab bar
   },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 12,
+  },
+  notAuthText: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  signInButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  signInButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  retryButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   profileHeader: {
     alignItems: 'center',
     borderRadius: 12,
     padding: 32,
     marginBottom: 16,
     gap: 12,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
   },
   name: {
     fontSize: 24,
@@ -74,10 +252,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     // color handled dynamically
   },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#10B98115',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  verifiedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
   section: {
     borderRadius: 12,
     padding: 20,
     gap: 12,
+    marginBottom: 16,
   },
   infoRow: {
     flexDirection: 'row',
@@ -86,6 +280,21 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 16,
+    flex: 1,
     // color handled dynamically
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 18,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  signOutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

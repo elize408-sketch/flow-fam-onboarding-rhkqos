@@ -1,12 +1,32 @@
 
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, commonStyles } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AppleAuthScreen() {
   const router = useRouter();
+  const { signInWithApple } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleAppleSignIn = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      await signInWithApple();
+      // Navigation will happen automatically after successful auth
+      router.replace("/(tabs)/(home)/home");
+    } catch (err: any) {
+      console.error("Apple sign in error:", err);
+      setError(err.message || "Er is een fout opgetreden bij het inloggen met Apple");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -19,6 +39,7 @@ export default function AppleAuthScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
             activeOpacity={0.7}
+            disabled={loading}
           >
             <IconSymbol
               ios_icon_name="chevron.left"
@@ -39,15 +60,42 @@ export default function AppleAuthScreen() {
             </View>
             <Text style={commonStyles.title}>Doorgaan met Apple</Text>
             <Text style={styles.subtitle}>
-              Deze functie wordt binnenkort toegevoegd
+              Klik op de knop hieronder om in te loggen met je Apple ID
             </Text>
           </View>
 
-          <View style={styles.placeholderCard}>
-            <Text style={styles.placeholderText}>
-              Hier komt de Apple authenticatie
-            </Text>
-          </View>
+          {error ? (
+            <View style={styles.errorCard}>
+              <IconSymbol
+                ios_icon_name="exclamationmark.triangle.fill"
+                android_material_icon_name="warning"
+                size={24}
+                color="#EF4444"
+              />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            style={[styles.appleButton, loading && styles.appleButtonDisabled]}
+            onPress={handleAppleSignIn}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <IconSymbol
+                  ios_icon_name="apple.logo"
+                  android_material_icon_name="phone"
+                  size={24}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.appleButtonText}>Inloggen met Apple</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -99,19 +147,38 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 8,
   },
-  placeholderCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.highlight,
-    borderStyle: 'dashed',
+  errorCard: {
+    backgroundColor: "#FEE2E2",
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#EF4444",
   },
-  placeholderText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    textAlign: 'center',
+  errorText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#EF4444",
+    marginLeft: 12,
+    flex: 1,
+  },
+  appleButton: {
+    backgroundColor: '#000000',
+    borderRadius: 12,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  appleButtonDisabled: {
+    opacity: 0.5,
+  },
+  appleButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

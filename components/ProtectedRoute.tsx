@@ -26,17 +26,17 @@
 import React, { useEffect } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext"; // TODO: Update import path
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  redirectTo?: string; // Default is "/auth"
+  redirectTo?: string; // Default is "/(tabs)/(home)/auth-options"
   loadingComponent?: React.ReactNode;
 }
 
 export function ProtectedRoute({
   children,
-  redirectTo = "/auth",
+  redirectTo = "/(tabs)/(home)/auth-options",
   loadingComponent,
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
