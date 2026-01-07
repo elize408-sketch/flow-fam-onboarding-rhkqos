@@ -6,6 +6,7 @@ export default function OnboardingLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="language" />
       <Stack.Screen name="auth-options" />
+      <Stack.Screen name="family-setup" />
     </Stack>
   );
 }

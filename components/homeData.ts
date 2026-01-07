@@ -1,16 +1,28 @@
 
 export const modalDemos = [
   {
+    title: "Your Family",
+    description: "View and manage family members",
+    route: "/(tabs)/(home)",
+    color: "#4F46E5",
+  },
+  {
+    title: "API Integration Demo",
+    description: "Test all backend API endpoints",
+    route: "/modal",
+    color: "#007AFF",
+  },
+  {
+    title: "Profile",
+    description: "View your user profile",
+    route: "/(tabs)/profile",
+    color: "#10B981",
+  },
+  {
     title: "Onboarding Flow",
     description: "Language selection and auth options",
     route: "/language",
     color: "#FF6B35",
-  },
-  {
-    title: "Standard Modal",
-    description: "Full screen modal presentation",
-    route: "/modal",
-    color: "#007AFF",
   },
   {
     title: "Form Sheet",

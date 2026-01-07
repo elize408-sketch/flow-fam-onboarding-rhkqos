@@ -1,208 +1,531 @@
 
-# Flow Fam - Supabase Authentication Setup
+# Flow Fam - Backend API Integration Complete ✅
 
-## Overview
+## 🎉 Integration Status: COMPLETE
 
-This app now includes working Supabase Email+Password authentication with:
-- ✅ Email sign up with validation
-- ✅ Email login
-- ✅ Session persistence using SecureStore
-- ✅ Automatic routing based on auth state
-- ✅ Logout functionality
+All backend API endpoints have been successfully integrated into the frontend application!
 
-## Setup Instructions
+---
 
-### 1. Create a Supabase Project
+# Backend API Integration Documentation
 
-1. Go to [https://supabase.com](https://supabase.com) and create a free account
-2. Create a new project
-3. Wait for the project to finish setting up (this takes a few minutes)
+## 📋 Overview
 
-### 2. Get Your Supabase Credentials
+This app is fully integrated with a BetterAuth-powered backend API. All endpoints are connected and working:
 
-1. In your Supabase project dashboard, go to **Settings** → **API**
-2. Copy the following values:
-   - **Project URL** (looks like: `https://xxxxx.supabase.co`)
-   - **anon/public key** (a long string starting with `eyJ...`)
+### ✅ Authentication (BetterAuth)
+- ✅ Email/Password signup and login
+- ✅ Google OAuth (web popup + native deep linking)
+- ✅ Apple OAuth (web popup + native deep linking)
+- ✅ Session management with bearer tokens
+- ✅ Automatic token refresh
+- ✅ Secure token storage (SecureStore on native, localStorage on web)
 
-### 3. Configure Environment Variables
+### ✅ User Management
+- ✅ Get current user profile (`GET /api/users/me`)
+- ✅ Get profile with family setup status (`GET /api/profile`)
+- ✅ Verify session validity (`GET /api/auth/verify`)
 
-Create a `.env` file in the root of your project:
+### ✅ Family Management
+- ✅ Create family with members (`POST /api/families`)
+- ✅ Get all family members (`GET /api/families/members`)
+- ✅ Update member styling (`PATCH /api/families/members/{memberId}`)
+- ✅ Complete family style setup (`POST /api/families/complete-style`)
 
-```bash
-EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+### ✅ File Upload
+- ✅ Upload avatar images (`POST /api/upload/avatar`)
+
+## 🚀 Backend Configuration
+
+### Backend URL
+
+The backend is already configured in `app.json`:
+
+```json
+{
+  "expo": {
+    "extra": {
+      "backendUrl": "https://22m6pxpwrn7zbf8z6sj655eutz2eucag.app.specular.dev"
+    }
+  }
+}
 ```
 
-Replace the values with your actual Supabase credentials from step 2.
+**⚠️ IMPORTANT:** Never hardcode the backend URL in your code. Always import it:
 
-### 4. Configure Email Authentication in Supabase
+```typescript
+import { BACKEND_URL } from '@/utils/api';
+```
 
-1. In your Supabase dashboard, go to **Authentication** → **Providers**
-2. Make sure **Email** is enabled
-3. Go to **Authentication** → **URL Configuration**
-4. Add your app's redirect URLs (for development):
-   - `exp://localhost:8081`
-   - `http://localhost:8081`
-
-### 5. Optional: Disable Email Confirmation (for testing)
-
-By default, Supabase requires users to confirm their email before logging in.
-
-To disable this for testing:
-1. Go to **Authentication** → **Providers** → **Email**
-2. Uncheck **"Confirm email"**
-3. Click **Save**
-
-**Note:** For production, you should keep email confirmation enabled and configure email templates.
-
-### 6. Run the App
+### Running the App
 
 ```bash
+npm install
 npm run dev
 ```
 
-## How It Works
+The app will automatically connect to the configured backend.
+
+## 🔄 How It Works
 
 ### Authentication Flow
 
-1. **First Launch**: User sees language selection → Auth options screen
-2. **Sign Up**: User creates account with email + password
-3. **Login**: User logs in with existing credentials
-4. **Session Persistence**: Session is stored securely using expo-secure-store
-5. **Auto-Login**: On app restart, user is automatically logged in if session exists
-6. **Logout**: User can log out from the home screen
+1. **First Launch**: Language selection → Auth options
+2. **Sign Up**: Email/password or OAuth (Google/Apple)
+3. **Family Setup**: Create family with members
+4. **Home**: View and manage family members
+5. **Session Persistence**: Automatic login on app restart
+6. **Logout**: Clear session and return to auth
 
 ### File Structure
 
 ```
 lib/
-  └── supabase.ts                    # Supabase client with SecureStore adapter
+  └── auth.ts                        # BetterAuth client configuration
 
 contexts/
-  └── SupabaseAuthContext.tsx        # Auth state management & hooks
+  └── AuthContext.tsx                # Auth state management & hooks
 
-app/(tabs)/(home)/
-  ├── index.tsx                      # Language selection (onboarding)
-  ├── auth-options.tsx               # Auth method selection
-  ├── email-signup.tsx               # Email sign up form
-  ├── login.tsx                      # Login form
-  └── home.tsx                       # Home screen (authenticated)
+utils/
+  └── api.ts                         # API utilities & helper functions
+
+app/
+  ├── index.tsx                      # Central routing logic
+  ├── _layout.tsx                    # Root layout with AuthProvider
+  ├── auth-callback.tsx              # OAuth callback handler
+  ├── auth-popup.tsx                 # OAuth popup for web
+  │
+  ├── (onboarding)/
+  │   ├── language.tsx               # Language selection
+  │   ├── auth-options.tsx           # Auth method selection
+  │   └── family-setup.tsx           # Family creation (✅ API integrated)
+  │
+  └── (tabs)/
+      ├── (home)/
+      │   ├── index.tsx              # Family members list (✅ API integrated)
+      │   ├── email-signup.tsx       # Email signup form
+      │   ├── login.tsx              # Login form
+      │   └── home.tsx               # Authenticated home
+      │
+      └── profile.tsx                # User profile (✅ API integrated)
 ```
 
-### Key Features
+## 🎯 Integrated Screens
 
-**Email Sign Up Screen:**
-- Email validation (required, valid format)
-- Password validation (min 8 characters)
-- Confirm password matching
-- Inline error messages
-- Loading state
-- Success message
+### 1. Family Setup Screen (`app/(onboarding)/family-setup.tsx`)
 
-**Login Screen:**
-- Email validation
-- Password validation
-- Inline error messages
-- Loading state
-- Success message
+**API Integration:**
+- ✅ `POST /api/families` - Creates family with members
 
-**Home Screen:**
-- Displays logged-in user email
-- Shows user ID
-- Logout button
-- Placeholder for future features
+**Features:**
+- Family name input
+- Parent name (pre-filled from user profile)
+- Optional partner name
+- Add/remove children dynamically
+- Form validation
+- Error handling with user-friendly messages
+- Loading states
+- Success feedback
 
-**Session Management:**
-- Sessions stored securely using expo-secure-store
-- Auto-refresh tokens
-- Persistent across app restarts
-- Automatic routing based on auth state
+**Code Example:**
+```typescript
+const { authenticatedPost } = await import("@/utils/api");
 
-## Testing
+const response = await authenticatedPost("/api/families", {
+  familyName: "Smith Family",
+  members: [
+    { name: "John", role: "parent" },
+    { name: "Jane", role: "partner" },
+    { name: "Jimmy", role: "child" },
+  ],
+});
+```
 
-### Test Sign Up Flow
+### 2. Profile Screen (`app/(tabs)/profile.tsx`)
 
-1. Launch the app
-2. Select a language
-3. Tap "Aanmelden met e-mail"
-4. Enter email: `test@example.com`
-5. Enter password: `password123`
-6. Confirm password: `password123`
-7. Tap "Account aanmaken"
-8. You should see success message and be redirected to home
+**API Integration:**
+- ✅ `GET /api/users/me` - Fetches user profile
 
-### Test Login Flow
+**Features:**
+- Display user information (name, email, ID)
+- Email verification badge
+- Member since date
+- Last updated date
+- Edit profile button (placeholder)
+- Settings button (placeholder)
+- Sign out functionality
+- Error handling with retry
+- Loading states
+- Pull-to-refresh
 
-1. From auth options, tap "Inloggen met bestaand account"
-2. Enter your email and password
-3. Tap "Inloggen"
-4. You should be redirected to home
+**Code Example:**
+```typescript
+import { authenticatedGet } from "@/utils/api";
 
-### Test Session Persistence
+const profile = await authenticatedGet<UserProfile>("/api/users/me");
+```
 
-1. Log in to the app
-2. Close the app completely
-3. Reopen the app
-4. You should be automatically logged in and see the home screen
+### 3. Home Screen (`app/(tabs)/(home)/index.tsx`)
 
-### Test Logout
+**API Integration:**
+- ✅ `GET /api/families/members` - Fetches family members
 
-1. From the home screen, tap "Uitloggen"
-2. You should be redirected to the language selection screen
-3. Your session should be cleared
+**Features:**
+- Display all family members
+- Show member role (parent/partner/child)
+- Color-coded member cards
+- Avatar display
+- Pull-to-refresh
+- Empty state with setup prompt
+- Error handling with retry
+- Loading states
+- Member count display
 
-## Validation Rules
+**Code Example:**
+```typescript
+import { authenticatedGet } from "@/utils/api";
 
-**Email:**
-- Required
-- Must be valid email format
+const data = await authenticatedGet<{ members: FamilyMember[] }>(
+  "/api/families/members"
+);
+```
 
-**Password:**
-- Required
-- Minimum 8 characters
+### 4. Auth Context (`contexts/AuthContext.tsx`)
 
-**Confirm Password:**
-- Required
-- Must match password
+**API Integration:**
+- ✅ `GET /api/profile` - Fetches profile with family setup status
+- ✅ BetterAuth session management
 
-## Error Handling
+**Features:**
+- Centralized auth state
+- Email/password authentication
+- Google OAuth (web popup + native)
+- Apple OAuth (web popup + native)
+- Session persistence
+- Automatic token management
+- Family setup status tracking
+- User profile caching
 
-The app handles various error scenarios:
-- Invalid email format
-- Password too short
-- Passwords don't match
-- User already exists
-- Invalid credentials
-- Network errors
-- Supabase errors
+## 🧪 Testing the Integration
 
-All errors are displayed as friendly inline messages in Dutch.
+### Interactive API Testing
 
-## Next Steps
+The app includes an **API Integration Demo** screen accessible from the home screen:
 
-This implementation provides the foundation for:
-- Adding Google OAuth authentication
-- Adding Apple OAuth authentication
-- Implementing family/group features
-- Adding user profiles
-- Implementing password reset
-- Adding email verification flow
+1. Launch the app and navigate to home
+2. Tap "API Integration Demo"
+3. Test each endpoint with interactive buttons:
+   - Get Family Members
+   - Update Member Style
+   - Complete Style Setup
+   - Get User Profile
+   - Verify Session
 
-## Troubleshooting
+All API calls are logged to the console with detailed request/response information.
 
-**"No storage option exists" warning:**
-- This is expected on web. The app uses SecureStore on native platforms and falls back to localStorage on web.
+### Manual Testing Flow
 
-**Sign up succeeds but can't log in:**
-- Check if email confirmation is enabled in Supabase
-- Either disable it for testing or check your email for confirmation link
+**1. Sign Up Flow:**
+```
+Language Selection → Auth Options → Email Signup
+→ Family Setup → Home (Family Members List)
+```
+
+**2. Login Flow:**
+```
+Language Selection → Auth Options → Login
+→ (If family setup incomplete) Family Setup → Home
+→ (If family setup complete) Home
+```
+
+**3. OAuth Flow (Web):**
+```
+Auth Options → Google/Apple → OAuth Popup
+→ Callback → Family Setup → Home
+```
+
+**4. OAuth Flow (Native):**
+```
+Auth Options → Google/Apple → Native OAuth
+→ Deep Link Callback → Family Setup → Home
+```
+
+### Debugging
+
+All API calls include comprehensive logging:
+
+```
+[API] Backend URL configured: https://...
+[API] Calling: https://.../api/families/members GET
+[API] Making authenticated request with token
+[API] Success: { members: [...] }
+```
+
+Check the console for:
+- ✅ Request URLs and methods
+- ✅ Authentication token presence
+- ✅ Request/response data
+- ✅ Error messages with status codes
+
+### Error Handling
+
+The app handles all error scenarios:
+- ✅ 400 Bad Request - Invalid data
+- ✅ 401 Unauthorized - Not authenticated
+- ✅ 403 Forbidden - Insufficient permissions
+- ✅ 404 Not Found - Resource doesn't exist
+- ✅ 413 Payload Too Large - File too big
+- ✅ 500 Server Error - Backend issues
+- ✅ Network errors - Connection issues
+
+All errors display user-friendly messages in Dutch.
+
+## 📚 API Usage Examples
+
+### Using Helper Functions
+
+All API endpoints have dedicated helper functions in `utils/api.ts`:
+
+```typescript
+import {
+  getFamilyMembers,
+  updateFamilyMemberStyle,
+  completeFamilyStyleSetup,
+  uploadAvatar,
+  getUserProfile,
+  createFamily,
+  verifySession,
+} from '@/utils/api';
+
+// Get family members
+const { members } = await getFamilyMembers();
+
+// Update member styling
+await updateFamilyMemberStyle(memberId, {
+  color: '#FF6B6B',
+  avatar_url: 'https://...',
+});
+
+// Upload avatar
+const formData = new FormData();
+formData.append('avatar', file);
+const { avatar_url } = await uploadAvatar(formData);
+
+// Get user profile
+const profile = await getUserProfile();
+
+// Create family
+await createFamily('Smith Family', [
+  { name: 'John', role: 'parent' },
+  { name: 'Jane', role: 'partner' },
+  { name: 'Jimmy', role: 'child' },
+]);
+
+// Verify session
+const { authenticated, user } = await verifySession();
+```
+
+### Using Generic API Functions
+
+For custom endpoints or flexibility:
+
+```typescript
+import {
+  authenticatedGet,
+  authenticatedPost,
+  authenticatedPatch,
+  authenticatedDelete,
+  authenticatedUpload,
+} from '@/utils/api';
+
+// GET request
+const data = await authenticatedGet('/api/custom-endpoint');
+
+// POST request
+const result = await authenticatedPost('/api/custom-endpoint', {
+  key: 'value',
+});
+
+// PATCH request
+const updated = await authenticatedPatch('/api/resource/123', {
+  field: 'new value',
+});
+
+// DELETE request
+await authenticatedDelete('/api/resource/123');
+
+// File upload
+const formData = new FormData();
+formData.append('file', file);
+const uploaded = await authenticatedUpload('/api/upload', formData);
+```
+
+## 🔐 Authentication Details
+
+### BetterAuth Configuration
+
+The app uses BetterAuth with the Expo client plugin:
+
+```typescript
+// lib/auth.ts
+export const authClient = createAuthClient({
+  baseURL: BACKEND_URL,
+  plugins: [
+    expoClient({
+      scheme: "natively",
+      storagePrefix: "natively",
+      storage: Platform.OS === "web" ? localStorage : SecureStore,
+    }),
+  ],
+});
+```
+
+### Token Management
+
+- **Native**: Tokens stored in SecureStore (encrypted)
+- **Web**: Tokens stored in localStorage
+- **Auto-refresh**: BetterAuth handles token refresh automatically
+- **Bearer tokens**: Automatically added to authenticated requests
+
+### OAuth Flows
+
+**Web:**
+1. User clicks OAuth button
+2. Popup window opens with OAuth provider
+3. User authenticates
+4. Callback receives token
+5. Token sent to parent window via postMessage
+6. Parent window stores token and closes popup
+
+**Native:**
+1. User clicks OAuth button
+2. Native OAuth flow opens
+3. User authenticates
+4. Deep link callback with token
+5. Token stored in SecureStore
+6. User redirected to app
+
+## 🛠️ Adding New API Endpoints
+
+To integrate a new backend endpoint:
+
+1. **Add helper function to `utils/api.ts`:**
+
+```typescript
+export const getCustomData = async () => {
+  return authenticatedGet<CustomDataType>("/api/custom-endpoint");
+};
+```
+
+2. **Use in your component:**
+
+```typescript
+import { getCustomData } from '@/utils/api';
+
+const fetchData = async () => {
+  try {
+    const data = await getCustomData();
+    console.log('Data:', data);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+```
+
+3. **Add error handling and loading states:**
+
+```typescript
+const [data, setData] = useState(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState('');
+
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const result = await getCustomData();
+      setData(result);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchData();
+}, []);
+```
+
+## 🐛 Troubleshooting
+
+**Backend URL not configured:**
+- Check `app.json` has `expo.extra.backendUrl` set
+- Restart Expo dev server after changing app.json
+- Verify BACKEND_URL is imported from `utils/api.ts`
+
+**401 Unauthorized errors:**
+- User not authenticated - redirect to login
+- Token expired - BetterAuth should auto-refresh
+- Check token is being stored correctly
+
+**Network errors:**
+- Check backend is running and accessible
+- Verify backend URL is correct
+- Check CORS settings on backend
+
+**OAuth not working on web:**
+- Check popup blockers are disabled
+- Verify callback URL is configured correctly
+- Check browser console for errors
+
+**OAuth not working on native:**
+- Verify deep link scheme matches (`natively://`)
+- Check app.json has correct scheme configured
+- Test deep link handling
 
 **Session not persisting:**
-- Make sure expo-secure-store is properly installed
-- Check that the Supabase client is configured with the SecureStore adapter
+- Check SecureStore is installed: `expo install expo-secure-store`
+- Verify storage adapter is configured in auth client
+- Check for errors in token storage/retrieval
 
-**Environment variables not working:**
-- Make sure your .env file is in the root directory
-- Restart the Expo dev server after adding .env file
-- Variables must start with `EXPO_PUBLIC_` to be accessible in the app
+## 📖 Additional Resources
+
+- **BetterAuth Documentation**: https://www.better-auth.com/docs
+- **Expo Router**: https://docs.expo.dev/router/introduction/
+- **Expo SecureStore**: https://docs.expo.dev/versions/latest/sdk/securestore/
+- **React Native**: https://reactnative.dev/docs/getting-started
+
+## ✅ Integration Checklist
+
+- [x] Backend URL configured in app.json
+- [x] BetterAuth client set up with Expo plugin
+- [x] AuthContext with email/password + OAuth
+- [x] API utilities with helper functions
+- [x] Family setup screen integrated
+- [x] Profile screen integrated
+- [x] Home screen with family members
+- [x] Error handling on all API calls
+- [x] Loading states on all screens
+- [x] Session persistence
+- [x] OAuth popup flows (web)
+- [x] OAuth deep linking (native)
+- [x] Comprehensive logging
+- [x] API testing screen
+- [x] Documentation complete
+
+## 🎉 Summary
+
+All backend API endpoints are now fully integrated and working! The app includes:
+
+- ✅ Complete authentication system (email + Google + Apple)
+- ✅ Family management (create, view, update)
+- ✅ User profile management
+- ✅ File upload support
+- ✅ Session management
+- ✅ Error handling
+- ✅ Loading states
+- ✅ Interactive API testing
+- ✅ Comprehensive documentation
+
+You can now build additional features on top of this solid foundation!
