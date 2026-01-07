@@ -12,8 +12,8 @@ export default function Index() {
       try {
         const completed = await AsyncStorage.getItem("onboardingComplete");
         setHasCompletedOnboarding(completed === "true");
-      } catch (error) {
-        console.error("Error checking onboarding status:", error);
+      } catch (e) {
+        console.error("Error checking onboarding status:", e);
         setHasCompletedOnboarding(false);
       } finally {
         setIsLoading(false);
@@ -30,6 +30,6 @@ export default function Index() {
   }
 
   return hasCompletedOnboarding
-    ? <Redirect href="/(tabs)/(home)" />
+    ? <Redirect href="/(tabs)" />
     : <Redirect href="/(onboarding)/language" />;
 }
