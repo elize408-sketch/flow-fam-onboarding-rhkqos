@@ -16,35 +16,24 @@ export default function GoogleAuthScreen() {
   const handleGoogleSignIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    // Show coming soon alert
-    Alert.alert(
-      "Binnenkort beschikbaar",
-      "Google authenticatie wordt binnenkort toegevoegd. Gebruik voorlopig email + wachtwoord om in te loggen.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-        }
-      ]
-    );
-
-    // Uncomment when backend is ready:
-    // setLoading(true);
-    // setError("");
-    // try {
-    //   // TODO: Backend Integration - Call Google OAuth endpoint
-    //   await signInWithGoogle();
-    //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    //   router.replace("/(tabs)/(home)/home");
-    // } catch (err: any) {
-    //   console.error("Google sign in error:", err);
-    //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    //   setError(err.message || "Er is een fout opgetreden bij het inloggen met Google");
-    // } finally {
-    //   setLoading(false);
-    // }
+    setLoading(true);
+    setError("");
+    
+    try {
+      console.log("[GoogleAuth] Starting Google sign in...");
+      await signInWithGoogle();
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // After successful auth, redirect to root - central router will handle family setup check
+      router.replace("/");
+    } catch (err: any) {
+      console.error("[GoogleAuth] Google sign in error:", err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(err.message || "Er is een fout opgetreden bij het inloggen met Google");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -107,7 +96,7 @@ export default function GoogleAuthScreen() {
             {loading ? (
               <ActivityIndicator color="#EA4335" />
             ) : (
-              <>
+              <React.Fragment>
                 <IconSymbol
                   ios_icon_name="person.circle.fill"
                   android_material_icon_name="account-circle"
@@ -115,7 +104,7 @@ export default function GoogleAuthScreen() {
                   color="#EA4335"
                 />
                 <Text style={styles.googleButtonText}>Inloggen met Google</Text>
-              </>
+              </React.Fragment>
             )}
           </TouchableOpacity>
 
@@ -127,7 +116,7 @@ export default function GoogleAuthScreen() {
               color={colors.textSecondary}
             />
             <Text style={styles.infoText}>
-              Deze functie wordt binnenkort toegevoegd. Gebruik voorlopig email + wachtwoord.
+              Je wordt doorgestuurd naar Google om in te loggen. Na het inloggen kom je automatisch terug naar de app.
             </Text>
           </View>
         </View>

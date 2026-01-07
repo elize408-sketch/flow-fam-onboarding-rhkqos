@@ -2,12 +2,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
 import { authClient, storeWebBearerToken } from "@/lib/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface User {
   id: string;
   email: string;
   name?: string;
   image?: string;
+  familySetupComplete?: boolean;
 }
 
 interface AuthContextType {
@@ -20,6 +22,7 @@ interface AuthContextType {
   signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
   fetchUser: () => Promise<void>;
+  checkFamilySetupStatus: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -86,25 +89,107 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, []);
 
+  const checkFamilySetupStatus = async (): Promise<boolean> => {
+    try {
+      // Check AsyncStorage first for offline support
+      const localStatus = await AsyncStorage.getItem("familySetupComplete");
+      if (localStatus === "true") {
+        return true;
+      }
+
+      // Fetch family setup status from backend
+      console.log("[Auth] Checking family setup status from backend...");
+      const { authenticatedGet } = await import("@/utils/api");
+      
+      const profileData = await authenticatedGet<{
+        id: string;
+        email: string;
+        name?: string;
+        image?: string;
+        emailVerified: boolean;
+        familySetupComplete: boolean;
+        createdAt: string;
+        updatedAt: string;
+      }>("/api/profile");
+      
+      console.log("[Auth] Profile data received:", profileData);
+      
+      // Cache the status locally
+      if (profileData.familySetupComplete) {
+        await AsyncStorage.setItem("familySetupComplete", "true");
+      }
+      
+      return profileData.familySetupComplete || false;
+    } catch (error) {
+      console.error("[Auth] Failed to check family setup status:", error);
+      // Return false on error to be safe
+      return false;
+    }
+  };
+
   const fetchUser = async () => {
     try {
       setLoading(true);
-      console.log("Fetching user session...");
+      console.log("[Auth] Fetching user session...");
       const session = await authClient.getSession();
-      console.log("Session fetched:", session);
+      console.log("[Auth] Session fetched:", session);
+      
       if (session?.data?.user) {
-        setUser(session.data.user as User);
-        console.log("User set:", session.data.user);
+        const userData = session.data.user as User;
+        
+        // Fetch complete profile with family setup status from backend
+        try {
+          console.log("[Auth] Fetching profile data from backend...");
+          const { authenticatedGet } = await import("@/utils/api");
+          
+          const profileData = await authenticatedGet<{
+            id: string;
+            email: string;
+            name?: string;
+            image?: string;
+            emailVerified: boolean;
+            familySetupComplete: boolean;
+            createdAt: string;
+            updatedAt: string;
+          }>("/api/profile");
+          
+          console.log("[Auth] Profile data received:", profileData);
+          
+          // Cache family setup status locally
+          if (profileData.familySetupComplete) {
+            await AsyncStorage.setItem("familySetupComplete", "true");
+          } else {
+            await AsyncStorage.removeItem("familySetupComplete");
+          }
+          
+          setUser({
+            ...userData,
+            familySetupComplete: profileData.familySetupComplete,
+          });
+          console.log("[Auth] User set with profile data:", {
+            ...userData,
+            familySetupComplete: profileData.familySetupComplete,
+          });
+        } catch (profileError) {
+          console.error("[Auth] Failed to fetch profile, using session data only:", profileError);
+          
+          // Fallback to checking AsyncStorage if backend call fails
+          const localStatus = await AsyncStorage.getItem("familySetupComplete");
+          setUser({
+            ...userData,
+            familySetupComplete: localStatus === "true",
+          });
+        }
       } else {
         setUser(null);
-        console.log("No user session found");
+        console.log("[Auth] No user session found");
       }
     } catch (error) {
-      console.error("Failed to fetch user:", error);
+      console.error("[Auth] Failed to fetch user:", error);
       setUser(null);
     } finally {
       setLoading(false);
-      console.log("Auth loading complete");
+      console.log("[Auth] Auth loading complete");
     }
   };
 
@@ -144,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         await authClient.signIn.social({
           provider: "google",
-          callbackURL: "/(tabs)/(home)/home",
+          callbackURL: "/(onboarding)/family-setup",
         });
         await fetchUser();
       }
@@ -164,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         await authClient.signIn.social({
           provider: "apple",
-          callbackURL: "/(tabs)/(home)/home",
+          callbackURL: "/(onboarding)/family-setup",
         });
         await fetchUser();
       }
@@ -184,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         await authClient.signIn.social({
           provider: "github",
-          callbackURL: "/(tabs)/(home)/home",
+          callbackURL: "/(onboarding)/family-setup",
         });
         await fetchUser();
       }
@@ -198,6 +283,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("Signing out...");
       await authClient.signOut();
+      
+      // Clear family setup status on sign out
+      await AsyncStorage.removeItem("familySetupComplete");
+      
       setUser(null);
       console.log("User signed out");
     } catch (error) {
@@ -223,6 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGitHub,
         signOut,
         fetchUser,
+        checkFamilySetupStatus,
       }}
     >
       {children}

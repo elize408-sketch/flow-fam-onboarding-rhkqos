@@ -38,7 +38,6 @@ export default function ProfileScreen() {
       setLoading(true);
       setError("");
       console.log("[Profile] Fetching user profile from /api/users/me");
-      // TODO: Backend Integration - Call the user profile API endpoint here
       const data = await authenticatedGet<UserProfile>("/api/users/me");
       console.log("[Profile] Profile data received:", data);
       setProfile(data);

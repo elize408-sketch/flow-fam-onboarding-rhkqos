@@ -73,9 +73,14 @@ export default function EmailSignUpScreen() {
     try {
       await signUpWithEmail(email, password);
       setSuccessMessage("Account succesvol aangemaakt! Je wordt doorgestuurd...");
-      // Navigate to home after successful signup
+      
+      // After signup, the AuthContext will fetch the user profile
+      // Since new users have familySetupComplete = false by default,
+      // the central routing in app/index.tsx will redirect to family setup
+      
+      // Navigate to family setup after successful signup
       setTimeout(() => {
-        router.replace("/(tabs)/(home)/home");
+        router.replace("/(onboarding)/family-setup");
       }, 1000);
     } catch (error: any) {
       console.error("Sign up error:", error);

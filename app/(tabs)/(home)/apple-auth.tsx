@@ -16,35 +16,24 @@ export default function AppleAuthScreen() {
   const handleAppleSignIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
-    // Show coming soon alert
-    Alert.alert(
-      "Binnenkort beschikbaar",
-      "Apple authenticatie wordt binnenkort toegevoegd. Gebruik voorlopig email + wachtwoord om in te loggen.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-        }
-      ]
-    );
-
-    // Uncomment when backend is ready:
-    // setLoading(true);
-    // setError("");
-    // try {
-    //   // TODO: Backend Integration - Call Apple OAuth endpoint
-    //   await signInWithApple();
-    //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    //   router.replace("/(tabs)/(home)/home");
-    // } catch (err: any) {
-    //   console.error("Apple sign in error:", err);
-    //   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    //   setError(err.message || "Er is een fout opgetreden bij het inloggen met Apple");
-    // } finally {
-    //   setLoading(false);
-    // }
+    setLoading(true);
+    setError("");
+    
+    try {
+      console.log("[AppleAuth] Starting Apple sign in...");
+      await signInWithApple();
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // After successful auth, redirect to root - central router will handle family setup check
+      router.replace("/");
+    } catch (err: any) {
+      console.error("[AppleAuth] Apple sign in error:", err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(err.message || "Er is een fout opgetreden bij het inloggen met Apple");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -107,7 +96,7 @@ export default function AppleAuthScreen() {
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <>
+              <React.Fragment>
                 <IconSymbol
                   ios_icon_name="apple.logo"
                   android_material_icon_name="phone"
@@ -115,7 +104,7 @@ export default function AppleAuthScreen() {
                   color="#FFFFFF"
                 />
                 <Text style={styles.appleButtonText}>Inloggen met Apple</Text>
-              </>
+              </React.Fragment>
             )}
           </TouchableOpacity>
 
@@ -127,7 +116,7 @@ export default function AppleAuthScreen() {
               color={colors.textSecondary}
             />
             <Text style={styles.infoText}>
-              Deze functie wordt binnenkort toegevoegd. Gebruik voorlopig email + wachtwoord.
+              Je wordt doorgestuurd naar Apple om in te loggen. Na het inloggen kom je automatisch terug naar de app.
             </Text>
           </View>
         </View>

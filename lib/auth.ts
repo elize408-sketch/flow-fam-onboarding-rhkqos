@@ -4,7 +4,10 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-const API_URL = "https://22m6pxpwrn7zbf8z6sj655eutz2eucag.app.specular.dev";
+// Use backend URL from app.json configuration
+const API_URL = Constants.expoConfig?.extra?.backendUrl || "https://22m6pxpwrn7zbf8z6sj655eutz2eucag.app.specular.dev";
+
+console.log("[Auth] BetterAuth configured with backend URL:", API_URL);
 
 const BEARER_TOKEN_KEY = "natively_bearer_token";
 

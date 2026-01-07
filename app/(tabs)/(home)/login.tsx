@@ -64,9 +64,15 @@ export default function LoginScreen() {
     try {
       await signInWithEmail(email, password);
       setSuccessMessage("Succesvol ingelogd! Je wordt doorgestuurd...");
-      // Navigate to home after successful login
+      
+      // After login, the AuthContext will fetch the user profile with family setup status
+      // The central routing in app/index.tsx will handle navigation automatically:
+      // - If familySetupComplete is false, user will be redirected to family setup
+      // - If true, user will be redirected to home
+      
+      // Navigate - let the central router decide where to go
       setTimeout(() => {
-        router.replace("/(tabs)/(home)/home");
+        router.replace("/");
       }, 1000);
     } catch (error: any) {
       console.error("Login error:", error);
