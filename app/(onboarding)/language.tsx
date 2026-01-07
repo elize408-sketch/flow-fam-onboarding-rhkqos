@@ -1,133 +1,224 @@
 
-import React, { useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Haptics from "expo-haptics";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { colors, commonStyles } from "@/styles/commonStyles";
-import { useRouter } from "expo-router";
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Picker } from '@react-native-picker/picker';
+import * as Haptics from 'expo-haptics';
+import { colors } from '@/styles/commonStyles';
+
+const LANGUAGE_STORAGE_KEY = 'user_language';
+
+const translations = {
+  en: { welcome: 'Welcome to Flow Fam', choose: 'Choose your language', next: 'Next' },
+  nl: { welcome: 'Welkom bij Flow Fam', choose: 'Kies je taal', next: 'Volgende' },
+  es: { welcome: 'Bienvenido a Flow Fam', choose: 'Elige tu idioma', next: 'Siguiente' },
+  fr: { welcome: 'Bienvenue chez Flow Fam', choose: 'Choisissez votre langue', next: 'Suivant' },
+  de: { welcome: 'Willkommen bei Flow Fam', choose: 'Wähle deine Sprache', next: 'Weiter' },
+};
 
 const LANGUAGES = [
-  { code: "en", label: "Engels" },
-  { code: "es", label: "Spaans" },
-  { code: "fr", label: "Frans" },
-  { code: "de", label: "Duits" },
-  { code: "nl", label: "Nederlands" },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'nl', label: 'Nederlands' },
 ];
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 24,
-    justifyContent: "space-between",
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 18,
-    color: colors.textSecondary,
-    marginBottom: 40,
-    textAlign: "center",
-  },
-  pickerContainer: {
-    width: "100%",
-    maxWidth: 400,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  picker: {
-    height: 50,
-    color: colors.text,
-  },
-  buttonContainer: {
-    paddingBottom: Platform.OS === "ios" ? 40 : 24,
-  },
-  button: {
-    ...commonStyles.button,
-    backgroundColor: colors.primary,
-  },
-  buttonText: {
-    ...commonStyles.buttonText,
-    color: "#FFFFFF",
-  },
-});
-
 export default function LanguageScreen() {
+  const [language, setLanguage] = useState('en');
   const router = useRouter();
-  const [selectedLanguage, setSelectedLanguage] = useState("en"); // Default to English
 
   useEffect(() => {
-    // Load saved language preference
-    AsyncStorage.getItem("app_language").then((saved) => {
-      if (saved) {
-        setSelectedLanguage(saved);
-      }
-    });
+    loadStoredLanguage();
   }, []);
 
-  const handleNext = async () => {
-    if (Platform.OS !== "web") {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const loadStoredLanguage = async () => {
+    try {
+      const storedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+      if (storedLanguage) {
+        setLanguage(storedLanguage);
+      }
+    } catch (error) {
+      console.error('Failed to load language:', error);
     }
-    
-    // Save language selection
-    await AsyncStorage.setItem("app_language", selectedLanguage);
-    
-    router.push("/(tabs)/(home)/auth-options");
   };
 
+  const handleLanguageSelect = async (lang: string) => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setLanguage(lang);
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+  };
+
+  const handleNext = () => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    router.push('/(onboarding)/auth-options');
+  };
+
+  const { welcome, choose, next } = translations[language as keyof typeof translations];
+
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Image
-          source={require("@/assets/images/final_quest_240x240.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Welkom bij Flow Fam</Text>
-        <Text style={styles.subtitle}>Kies je taal</Text>
-        
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Logo - Full opacity, properly sized and centered */}
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../../assets/images/128477ea-8dd8-4186-9fc2-469b21f2f598.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* Title */}
+        <Text style={styles.title}>{welcome}</Text>
+
+        {/* Subtitle */}
+        <Text style={styles.subtitle}>{choose}</Text>
+
+        {/* Language Picker */}
         <View style={styles.pickerContainer}>
           <Picker
-            selectedValue={selectedLanguage}
-            onValueChange={(value) => setSelectedLanguage(value)}
+            selectedValue={language}
+            onValueChange={(value) => handleLanguageSelect(value)}
             style={styles.picker}
+            itemStyle={styles.pickerItem}
           >
             {LANGUAGES.map((lang) => (
-              <Picker.Item
-                key={lang.code}
-                label={lang.label}
-                value={lang.code}
-              />
+              <Picker.Item key={lang.code} label={lang.label} value={lang.code} />
             ))}
           </Picker>
         </View>
-      </View>
+      </ScrollView>
 
+      {/* Fixed Bottom Button - Fully visible with proper safe area spacing */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={handleNext}>
-          <Text style={styles.buttonText}>Volgende</Text>
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={handleNext}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.nextButtonText}>{next}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  logoContainer: {
+    marginBottom: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    opacity: 1.0, // Full opacity - logo is now clearly visible
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 17,
+    fontWeight: '400',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 48,
+  },
+  pickerContainer: {
+    width: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    marginBottom: 32,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  picker: {
+    width: '100%',
+    height: Platform.OS === 'ios' ? 180 : 56,
+    color: colors.text,
+  },
+  pickerItem: {
+    fontSize: 18,
+    color: colors.text,
+    height: 180,
+  },
+  buttonContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 24,
+    paddingTop: 16,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  nextButton: {
+    backgroundColor: colors.primary,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+});
