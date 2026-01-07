@@ -1,80 +1,137 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Image } from "react-native";
-import * as Haptics from "expo-haptics";
 import { colors, commonStyles } from "@/styles/commonStyles";
-import { IconSymbol } from "@/components/IconSymbol";
 import { useRouter } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from "expo-haptics";
+import { IconSymbol } from "@/components/IconSymbol";
+
+const LANGUAGE_STORAGE_KEY = 'app_language';
+
+const translations = {
+  en: { welcome: "Welcome to Flow Fam", choose: "Choose your language", next: "Next" },
+  nl: { welcome: "Welkom bij Flow Fam", choose: "Kies je taal", next: "Volgende" },
+  es: { welcome: "Bienvenido a Flow Fam", choose: "Elige tu idioma", next: "Siguiente" },
+  fr: { welcome: "Bienvenue chez Flow Fam", choose: "Choisissez votre langue", next: "Suivant" },
+  de: { welcome: "Willkommen bei Flow Fam", choose: "Wähle deine Sprache", next: "Weiter" },
+};
 
 const LANGUAGES = [
-  { code: "en", name: "Engels" },
-  { code: "es", name: "Spaans" },
-  { code: "fr", name: "Frans" },
-  { code: "de", name: "Duits" },
-  { code: "nl", name: "Nederlands" },
+  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
 ];
 
 export default function LanguageScreen() {
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
 
-  const handleLanguageSelect = (code: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  useEffect(() => {
+    loadStoredLanguage();
+  }, []);
+
+  const loadStoredLanguage = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+      if (stored && translations[stored as keyof typeof translations]) {
+        setSelectedLanguage(stored);
+      }
+    } catch (error) {
+      console.error('Failed to load language:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLanguageSelect = async (code: string) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     setSelectedLanguage(code);
+    try {
+      await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, code);
+    } catch (error) {
+      console.error('Failed to save language:', error);
+    }
   };
 
   const handleNext = () => {
-    if (!selectedLanguage) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push("/auth-options");
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    router.push('/(tabs)/(home)/auth-options');
   };
 
+  const t = translations[selectedLanguage as keyof typeof translations];
+
+  if (isLoading) {
+    return <View style={styles.container} />;
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.content}>
-        <Image 
-          source={require("@/assets/images/128477ea-8dd8-4186-9fc2-469b21f2f598.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        
-        <Text style={styles.title}>Welkom bij Flow Fam</Text>
-        <Text style={styles.subtitle}>Kies je taal</Text>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../assets/images/128477ea-8dd8-4186-9fc2-469b21f2f598.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
+        <Text style={styles.title}>{t.welcome}</Text>
+        <Text style={styles.subtitle}>{t.choose}</Text>
 
         <View style={styles.languageList}>
           {LANGUAGES.map((lang) => (
             <TouchableOpacity
               key={lang.code}
               style={[
-                styles.languageOption,
-                selectedLanguage === lang.code && styles.languageOptionSelected,
+                styles.languageButton,
+                selectedLanguage === lang.code && styles.languageButtonSelected,
               ]}
               onPress={() => handleLanguageSelect(lang.code)}
+              activeOpacity={0.7}
             >
+              <Text style={styles.flag}>{lang.flag}</Text>
               <Text
                 style={[
-                  styles.languageText,
-                  selectedLanguage === lang.code && styles.languageTextSelected,
+                  styles.languageName,
+                  selectedLanguage === lang.code && styles.languageNameSelected,
                 ]}
               >
                 {lang.name}
               </Text>
               {selectedLanguage === lang.code && (
-                <IconSymbol name="checkmark.circle.fill" size={24} color={colors.primary} />
+                <IconSymbol
+                  ios_icon_name="checkmark.circle.fill"
+                  android_material_icon_name="check-circle"
+                  size={24}
+                  color={colors.primary}
+                />
               )}
             </TouchableOpacity>
           ))}
         </View>
-      </View>
+      </ScrollView>
 
-      <TouchableOpacity
-        style={[styles.nextButton, !selectedLanguage && styles.nextButtonDisabled]}
-        onPress={handleNext}
-        disabled={!selectedLanguage}
-      >
-        <Text style={styles.nextButtonText}>Volgende</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[commonStyles.primaryButton, styles.nextButton]}
+          onPress={handleNext}
+          activeOpacity={0.8}
+        >
+          <Text style={commonStyles.primaryButtonText}>{t.next}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -83,76 +140,74 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  contentContainer: {
+  scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
-  },
-  content: {
-    flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 120,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   logo: {
     width: 120,
     height: 120,
-    alignSelf: "center",
-    marginBottom: 32,
   },
   title: {
     fontSize: 32,
-    fontWeight: "700",
+    fontWeight: '700',
     color: colors.text,
-    textAlign: "center",
-    marginBottom: 8,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: colors.textSecondary,
-    textAlign: "center",
+    textAlign: 'center',
     marginBottom: 40,
   },
   languageList: {
     gap: 12,
   },
-  languageOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "transparent",
+    borderColor: 'transparent',
   },
-  languageOptionSelected: {
+  languageButtonSelected: {
     borderColor: colors.primary,
     backgroundColor: `${colors.primary}10`,
   },
-  languageText: {
-    fontSize: 17,
-    color: colors.text,
-    fontWeight: "500",
+  flag: {
+    fontSize: 28,
+    marginRight: 16,
   },
-  languageTextSelected: {
+  languageName: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  languageNameSelected: {
     color: colors.primary,
-    fontWeight: "600",
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   nextButton: {
-    marginHorizontal: 24,
-    marginTop: 20,
-    backgroundColor: colors.primary,
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center",
-    ...commonStyles.shadow,
-  },
-  nextButtonDisabled: {
-    backgroundColor: colors.disabled,
-    opacity: 0.5,
-  },
-  nextButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "600",
+    width: '100%',
   },
 });
