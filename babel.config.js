@@ -12,40 +12,46 @@ module.exports = function (api) {
 
   return {
     presets: ["babel-preset-expo"],
-   plugins: [
-  [
-    "module-resolver",
-    {
-      root: ["./"],
-      extensions: [
-        ".ios.ts",
-        ".android.ts",
-        ".ts",
-        ".ios.tsx",
-        ".android.tsx",
-        ".tsx",
-        ".jsx",
-        ".js",
-        ".json",
+    plugins: [
+      // Editable components (optioneel, development only)
+      ...EDITABLE_COMPONENTS,
+
+      // ✅ Expo Router (VERPLICHT voor app/ routing)
+      "expo-router/babel",
+
+      // Module resolver (aliases zoals @/contexts etc.)
+      [
+        "module-resolver",
+        {
+          root: ["./"],
+          extensions: [
+            ".ios.ts",
+            ".android.ts",
+            ".ts",
+            ".ios.tsx",
+            ".android.tsx",
+            ".tsx",
+            ".jsx",
+            ".js",
+            ".json",
+          ],
+          alias: {
+            "@": "./",
+            "@components": "./components",
+            "@style": "./style",
+            "@hooks": "./hooks",
+            "@types": "./types",
+            "@contexts": "./contexts",
+            "@lib": "./lib",
+          },
+        },
       ],
-      alias: {
-        "@": "./",
-        "@components": "./components",
-        "@style": "./style",
-        "@hooks": "./hooks",
-        "@types": "./types",
-        "@contexts": "./contexts",
-        "@lib": "./lib",
-      },
-    },
-  ],
-  ...EDITABLE_COMPONENTS,
 
-  // ✅ Voeg deze toe voor Expo Router
-  "expo-router/babel",
+      // Other babel plugins
+      "@babel/plugin-proposal-export-namespace-from",
 
-  "@babel/plugin-proposal-export-namespace-from",
-
-  // ✅ Moet als laatste blijven
-  "react-native-worklets/plugin",
-],
+      // ✅ MOET ABSOLUUT ALS LAATSTE
+      "react-native-worklets/plugin",
+    ],
+  };
+};
