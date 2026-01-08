@@ -1,7 +1,7 @@
 
+import { authClient, storeWebBearerToken } from "@/lib/auth";
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
-import { authClient, storeWebBearerToken } from "@/lib/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface User {
@@ -25,60 +25,27 @@ interface AuthContextType {
   checkFamilySetupStatus: () => Promise<boolean>;
 }
 
+function openOAuthPopup(provider: string) {
+  const width = 500;
+  const height = 600;
+  const left = window.screen.width / 2 - width / 2;
+  const top = window.screen.height / 2 - height / 2;
+
+  return window.open(
+    "",
+    `${provider}_oauth`,
+    `width=${width},height=${height},left=${left},top=${top}`
+  );
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function openOAuthPopup(provider: string): Promise<string> {
-  // Only run on web platform
-  if (Platform.OS !== "web") {
-    return Promise.reject(new Error("OAuth popup is only available on web"));
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-
-  return new Promise((resolve, reject) => {
-    // Type guard to ensure we're on web
-    if (typeof window === "undefined") {
-      reject(new Error("Window object not available"));
-      return;
-    }
-
-    const popupUrl = `${window.location.origin}/auth-popup?provider=${provider}`;
-    const width = 500;
-    const height = 600;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const popup = window.open(
-      popupUrl,
-      "oauth-popup",
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
-    );
-
-    if (!popup) {
-      reject(new Error("Failed to open popup. Please allow popups."));
-      return;
-    }
-
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "oauth-success" && event.data?.token) {
-        window.removeEventListener("message", handleMessage);
-        clearInterval(checkClosed);
-        resolve(event.data.token);
-      } else if (event.data?.type === "oauth-error") {
-        window.removeEventListener("message", handleMessage);
-        clearInterval(checkClosed);
-        reject(new Error(event.data.error || "OAuth failed"));
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener("message", handleMessage);
-        reject(new Error("Authentication cancelled"));
-      }
-    }, 500);
-  });
+  return context;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -86,219 +53,179 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('[AuthContext] Initializing...');
     fetchUser();
   }, []);
 
-  const checkFamilySetupStatus = async (): Promise<boolean> => {
-    try {
-      // Check AsyncStorage first for offline support
-      const localStatus = await AsyncStorage.getItem("familySetupComplete");
-      if (localStatus === "true") {
-        return true;
-      }
-
-      // Fetch family setup status from backend
-      console.log("[Auth] Checking family setup status from backend...");
-      const { authenticatedGet } = await import("@/utils/api");
-      
-      const profileData = await authenticatedGet<{
-        id: string;
-        email: string;
-        name?: string;
-        image?: string;
-        emailVerified: boolean;
-        familySetupComplete: boolean;
-        createdAt: string;
-        updatedAt: string;
-      }>("/api/profile");
-      
-      console.log("[Auth] Profile data received:", profileData);
-      
-      // Cache the status locally
-      if (profileData.familySetupComplete) {
-        await AsyncStorage.setItem("familySetupComplete", "true");
-      }
-      
-      return profileData.familySetupComplete || false;
-    } catch (error) {
-      console.error("[Auth] Failed to check family setup status:", error);
-      // Return false on error to be safe
-      return false;
-    }
-  };
-
   const fetchUser = async () => {
+    console.log('[AuthContext] Fetching user...');
     try {
-      setLoading(true);
-      console.log("[Auth] Fetching user session...");
       const session = await authClient.getSession();
-      console.log("[Auth] Session fetched:", session);
-      
-      if (session?.data?.user) {
-        const userData = session.data.user as User;
-        
-        // Fetch complete profile with family setup status from backend
-        try {
-          console.log("[Auth] Fetching profile data from backend...");
-          const { authenticatedGet } = await import("@/utils/api");
-          
-          const profileData = await authenticatedGet<{
-            id: string;
-            email: string;
-            name?: string;
-            image?: string;
-            emailVerified: boolean;
-            familySetupComplete: boolean;
-            createdAt: string;
-            updatedAt: string;
-          }>("/api/profile");
-          
-          console.log("[Auth] Profile data received:", profileData);
-          
-          // Cache family setup status locally
-          if (profileData.familySetupComplete) {
-            await AsyncStorage.setItem("familySetupComplete", "true");
-          } else {
-            await AsyncStorage.removeItem("familySetupComplete");
-          }
-          
-          setUser({
-            ...userData,
-            familySetupComplete: profileData.familySetupComplete,
-          });
-          console.log("[Auth] User set with profile data:", {
-            ...userData,
-            familySetupComplete: profileData.familySetupComplete,
-          });
-        } catch (profileError) {
-          console.error("[Auth] Failed to fetch profile, using session data only:", profileError);
-          
-          // Fallback to checking AsyncStorage if backend call fails
-          const localStatus = await AsyncStorage.getItem("familySetupComplete");
-          setUser({
-            ...userData,
-            familySetupComplete: localStatus === "true",
-          });
-        }
+      console.log('[AuthContext] Session:', !!session.data);
+
+      if (session.data) {
+        const userData: User = {
+          id: session.data.user.id,
+          email: session.data.user.email,
+          name: session.data.user.name,
+          image: session.data.user.image,
+        };
+        console.log('[AuthContext] User loaded:', userData.id);
+        setUser(userData);
       } else {
+        console.log('[AuthContext] No session found');
         setUser(null);
-        console.log("[Auth] No user session found");
       }
     } catch (error) {
-      console.error("[Auth] Failed to fetch user:", error);
+      console.error("[AuthContext] Error fetching user:", error);
       setUser(null);
     } finally {
       setLoading(false);
-      console.log("[Auth] Auth loading complete");
+      console.log('[AuthContext] Loading complete');
     }
   };
 
+  const checkFamilySetupStatus = async (): Promise<boolean> => {
+    // This is now handled in app/index.tsx
+    return false;
+  };
+
   const signInWithEmail = async (email: string, password: string) => {
+    console.log('[AuthContext] Signing in with email...');
+    setLoading(true);
     try {
-      console.log("Signing in with email:", email);
-      await authClient.signIn.email({ email, password });
+      const result = await authClient.signIn.email({
+        email,
+        password,
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      console.log('[AuthContext] Sign in successful');
       await fetchUser();
     } catch (error) {
-      console.error("Email sign in failed:", error);
+      console.error("[AuthContext] Sign in error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
+    console.log('[AuthContext] Signing up with email...');
+    setLoading(true);
     try {
-      console.log("Signing up with email:", email);
-      await authClient.signUp.email({
+      const result = await authClient.signUp.email({
         email,
         password,
-        name,
+        name: name || email.split("@")[0],
       });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      console.log('[AuthContext] Sign up successful');
       await fetchUser();
     } catch (error) {
-      console.error("Email sign up failed:", error);
+      console.error("[AuthContext] Sign up error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
+    console.log('[AuthContext] Signing in with Google...');
+    setLoading(true);
     try {
-      console.log("Signing in with Google...");
       if (Platform.OS === "web") {
-        const token = await openOAuthPopup("google");
-        storeWebBearerToken(token);
-        await fetchUser();
-      } else {
-        await authClient.signIn.social({
+        const popup = openOAuthPopup("google");
+        const result = await authClient.signIn.social({
           provider: "google",
-          callbackURL: "/(onboarding)/family-setup",
+          callbackURL: window.location.origin + "/auth/callback",
         });
-        await fetchUser();
+        if (popup && result.data?.url) {
+          popup.location.href = result.data.url;
+        }
+      } else {
+        await authClient.signIn.social({ provider: "google" });
       }
+      await fetchUser();
     } catch (error) {
-      console.error("Google sign in failed:", error);
+      console.error("[AuthContext] Google sign in error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signInWithApple = async () => {
+    console.log('[AuthContext] Signing in with Apple...');
+    setLoading(true);
     try {
-      console.log("Signing in with Apple...");
       if (Platform.OS === "web") {
-        const token = await openOAuthPopup("apple");
-        storeWebBearerToken(token);
-        await fetchUser();
-      } else {
-        await authClient.signIn.social({
+        const popup = openOAuthPopup("apple");
+        const result = await authClient.signIn.social({
           provider: "apple",
-          callbackURL: "/(onboarding)/family-setup",
+          callbackURL: window.location.origin + "/auth/callback",
         });
-        await fetchUser();
+        if (popup && result.data?.url) {
+          popup.location.href = result.data.url;
+        }
+      } else {
+        await authClient.signIn.social({ provider: "apple" });
       }
+      await fetchUser();
     } catch (error) {
-      console.error("Apple sign in failed:", error);
+      console.error("[AuthContext] Apple sign in error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signInWithGitHub = async () => {
+    console.log('[AuthContext] Signing in with GitHub...');
+    setLoading(true);
     try {
-      console.log("Signing in with GitHub...");
       if (Platform.OS === "web") {
-        const token = await openOAuthPopup("github");
-        storeWebBearerToken(token);
-        await fetchUser();
-      } else {
-        await authClient.signIn.social({
+        const popup = openOAuthPopup("github");
+        const result = await authClient.signIn.social({
           provider: "github",
-          callbackURL: "/(onboarding)/family-setup",
+          callbackURL: window.location.origin + "/auth/callback",
         });
-        await fetchUser();
+        if (popup && result.data?.url) {
+          popup.location.href = result.data.url;
+        }
+      } else {
+        await authClient.signIn.social({ provider: "github" });
       }
+      await fetchUser();
     } catch (error) {
-      console.error("GitHub sign in failed:", error);
+      console.error("[AuthContext] GitHub sign in error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
+    console.log('[AuthContext] Signing out...');
+    setLoading(true);
     try {
-      console.log("Signing out...");
       await authClient.signOut();
-      
-      // Clear family setup status on sign out
-      await AsyncStorage.removeItem("familySetupComplete");
-      
       setUser(null);
-      console.log("User signed out");
+      console.log('[AuthContext] Sign out successful');
     } catch (error) {
-      console.error("Sign out failed:", error);
+      console.error("[AuthContext] Sign out error:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Show a loading fallback while auth is initializing
-  if (loading) {
-    console.log("Auth provider is loading...");
-  }
 
   return (
     <AuthContext.Provider
@@ -318,12 +245,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
 }

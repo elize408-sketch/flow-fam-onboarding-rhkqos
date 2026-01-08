@@ -16,7 +16,8 @@ import { Picker } from '@react-native-picker/picker';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/styles/commonStyles';
 
-const LANGUAGE_STORAGE_KEY = 'user_language';
+// IMPORTANT: Must match the key in app/index.tsx
+const LANGUAGE_STORAGE_KEY = 'app_language';
 
 const translations = {
   en: { welcome: 'Welcome to Flow Fam', choose: 'Choose your language', next: 'Next' },
@@ -39,33 +40,42 @@ export default function LanguageScreen() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log('[Language] Screen loaded');
     loadStoredLanguage();
   }, []);
 
   const loadStoredLanguage = async () => {
     try {
       const storedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+      console.log('[Language] Stored language:', storedLanguage);
       if (storedLanguage) {
         setLanguage(storedLanguage);
       }
     } catch (error) {
-      console.error('Failed to load language:', error);
+      console.error('[Language] Failed to load language:', error);
     }
   };
 
   const handleLanguageSelect = async (lang: string) => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    console.log('[Language] Language selected:', lang);
     setLanguage(lang);
     await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
   };
 
-  const handleNext = () => {
-    if (Platform.OS === 'ios') {
+  const handleNext = async () => {
+    if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    router.push('/(onboarding)/auth-options');
+    
+    // Save language selection
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    console.log('[Language] Language saved, redirecting to auth');
+    
+    // Navigate to auth screen
+    router.replace('/(tabs)/(home)/auth');
   };
 
   const { welcome, choose, next } = translations[language as keyof typeof translations];
@@ -141,7 +151,7 @@ const styles = StyleSheet.create({
   logo: {
     width: 140,
     height: 140,
-    opacity: 1.0, // Full opacity - logo is now clearly visible
+    opacity: 1.0,
   },
   title: {
     fontSize: 32,

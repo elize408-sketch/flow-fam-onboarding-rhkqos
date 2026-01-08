@@ -1,128 +1,160 @@
 
-import { Redirect, useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { getUserProfile } from "@/utils/api";
+import { Redirect, useRouter, usePathname } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authenticatedGet } from '@/utils/api';
+import { colors } from '@/styles/commonStyles';
+
+const LANGUAGE_STORAGE_KEY = 'app_language';
+const TIMEOUT_MS = 2000;
+
+interface OnboardingStatus {
+  languageSelected: boolean;
+  hasFamily: boolean;
+  familyStyleComplete: boolean;
+}
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [languageComplete, setLanguageComplete] = useState<boolean | null>(null);
-  const [familySetupComplete, setFamilySetupComplete] = useState<boolean | null>(null);
-  const [familyStyleComplete, setFamilyStyleComplete] = useState<boolean | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const [isChecking, setIsChecking] = useState(true);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
 
   useEffect(() => {
+    // Prevent redirect loops - only run on index route
+    if (pathname !== '/') {
+      console.log('[Index] Not on index route, skipping:', pathname);
+      return;
+    }
+
     checkOnboardingStatus();
-  }, [user, authLoading]);
+  }, [user, authLoading, pathname]);
 
   const checkOnboardingStatus = async () => {
-    try {
-      const language = await AsyncStorage.getItem("onboardingComplete");
-      setLanguageComplete(language === "true");
+    console.log('[Index] Starting onboarding check...');
+    console.log('[Index] Auth loading:', authLoading);
+    console.log('[Index] User:', user?.id);
 
-      // If user is authenticated, check family setup and style status from backend
-      if (user && !authLoading) {
-        console.log("[Index] User authenticated, checking onboarding status from backend...");
-        
-        try {
-          const profile = await getUserProfile();
-          console.log("[Index] Profile data:", profile);
-          
-          // Check family setup status
-          const setupComplete = profile.familySetupComplete || false;
-          setFamilySetupComplete(setupComplete);
-          
-          // Check family style status (from backend or AsyncStorage)
-          // The backend should have a familyStyleComplete field
-          const styleComplete = (profile as any).familyStyleComplete || false;
-          setFamilyStyleComplete(styleComplete);
-          
-          // Cache locally
-          if (setupComplete) {
-            await AsyncStorage.setItem("familySetupComplete", "true");
-          }
-          if (styleComplete) {
-            await AsyncStorage.setItem("familyStyleComplete", "true");
-          }
-          
-          console.log("[Index] Onboarding status:", {
-            languageComplete,
-            familySetupComplete: setupComplete,
-            familyStyleComplete: styleComplete,
-          });
-        } catch (error) {
-          console.error("[Index] Error fetching profile, using AsyncStorage fallback:", error);
-          
-          // Fallback to AsyncStorage if backend call fails
-          const familySetup = await AsyncStorage.getItem("familySetupComplete");
-          const familyStyle = await AsyncStorage.getItem("familyStyleComplete");
-          setFamilySetupComplete(familySetup === "true");
-          setFamilyStyleComplete(familyStyle === "true");
-        }
+    // Wait for auth to finish loading
+    if (authLoading) {
+      console.log('[Index] Waiting for auth...');
+      return;
+    }
+
+    // Set timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      console.warn('[Index] Timeout reached! Forcing fallback route.');
+      setIsChecking(false);
+      if (!user) {
+        router.replace('/(tabs)/(home)/auth');
       } else {
-        setFamilySetupComplete(false);
-        setFamilyStyleComplete(false);
+        router.replace('/(onboarding)/family-setup');
       }
-    } catch (e) {
-      console.error("[Index] Error checking onboarding status:", e);
-      setLanguageComplete(false);
-      setFamilySetupComplete(false);
-      setFamilyStyleComplete(false);
-    } finally {
-      setIsLoading(false);
+    }, TIMEOUT_MS);
+
+    try {
+      // No user = go to auth
+      if (!user) {
+        console.log('[Index] No user, redirecting to auth');
+        clearTimeout(timeoutId);
+        setIsChecking(false);
+        router.replace('/(tabs)/(home)/auth');
+        return;
+      }
+
+      // Check language selection
+      const language = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+      const languageSelected = !!language;
+      console.log('[Index] Language selected:', languageSelected);
+
+      if (!languageSelected) {
+        console.log('[Index] No language, redirecting to language selection');
+        clearTimeout(timeoutId);
+        setIsChecking(false);
+        router.replace('/(onboarding)/language');
+        return;
+      }
+
+      // Check family setup status
+      console.log('[Index] Checking family status...');
+      let hasFamily = false;
+      let familyStyleComplete = false;
+
+      try {
+        const familyMembers = await authenticatedGet('/api/families/members');
+        hasFamily = Array.isArray(familyMembers) && familyMembers.length > 0;
+        console.log('[Index] Has family:', hasFamily, 'Members:', familyMembers?.length);
+
+        // Check if all members have colors (family style complete)
+        if (hasFamily) {
+          familyStyleComplete = familyMembers.every((member: any) => !!member.color);
+          console.log('[Index] Family style complete:', familyStyleComplete);
+        }
+      } catch (error: any) {
+        console.log('[Index] Family check error (expected if no family):', error.message);
+        hasFamily = false;
+        familyStyleComplete = false;
+      }
+
+      clearTimeout(timeoutId);
+      setOnboardingStatus({ languageSelected, hasFamily, familyStyleComplete });
+
+      // Route based on status
+      if (!hasFamily) {
+        console.log('[Index] No family, redirecting to family-setup');
+        setIsChecking(false);
+        router.replace('/(onboarding)/family-setup');
+        return;
+      }
+
+      if (!familyStyleComplete) {
+        console.log('[Index] Family style incomplete, redirecting to family-style');
+        setIsChecking(false);
+        router.replace('/(onboarding)/family-style');
+        return;
+      }
+
+      // All onboarding complete
+      console.log('[Index] Onboarding complete, redirecting to home');
+      setIsChecking(false);
+      router.replace('/(tabs)/(home)');
+
+    } catch (error) {
+      console.error('[Index] Error checking onboarding status:', error);
+      clearTimeout(timeoutId);
+      setIsChecking(false);
+      // Fallback to auth on error
+      router.replace('/(tabs)/(home)/auth');
     }
   };
 
-  // Show loading while checking auth and onboarding status
-  if (
-    isLoading || 
-    authLoading || 
-    languageComplete === null || 
-    familySetupComplete === null ||
-    familyStyleComplete === null
-  ) {
+  // Show loading screen while checking
+  if (isChecking) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.text}>Authenticatie controleren…</Text>
       </View>
     );
   }
 
-  // Flow:
-  // 1. If language not selected -> language onboarding
-  // 2. If not authenticated -> auth options
-  // 3. If authenticated but family setup not complete -> family setup
-  // 4. If authenticated and family setup complete but style not complete -> family style
-  // 5. If everything complete -> home
-
-  // Step 1: Language onboarding
-  if (!languageComplete) {
-    console.log("[Index] Redirecting to language onboarding");
-    return <Redirect href="/(onboarding)/language" />;
-  }
-
-  // Step 2: Authentication
-  if (!user) {
-    console.log("[Index] Redirecting to auth options");
-    return <Redirect href="/(onboarding)/auth-options" />;
-  }
-
-  // Step 3: Family setup (only if authenticated)
-  if (!familySetupComplete) {
-    console.log("[Index] Redirecting to family setup");
-    return <Redirect href="/(onboarding)/family-setup" />;
-  }
-
-  // Step 4: Family style (only if family setup is complete)
-  if (!familyStyleComplete) {
-    console.log("[Index] Redirecting to family style");
-    return <Redirect href="/(onboarding)/family-style" />;
-  }
-
-  // Step 5: All complete - go to home
-  console.log("[Index] All onboarding complete, redirecting to home");
-  return <Redirect href="/(tabs)/(home)" />;
+  // Fallback redirect (should not reach here)
+  return <Redirect href="/(tabs)/(home)/auth" />;
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  text: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.text,
+  },
+});
