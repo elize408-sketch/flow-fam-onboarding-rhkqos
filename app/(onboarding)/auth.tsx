@@ -1,37 +1,31 @@
 
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from "react-native";
-import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
-import { IconSymbol } from "@/components/IconSymbol";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { IconSymbol } from '@/components/IconSymbol';
 
-export default function AuthOptionsScreen() {
+export default function AuthScreen() {
   const router = useRouter();
 
-  const handleOption = async (route: string) => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    
-    // Navigate to the selected auth screen (all in onboarding folder)
-    router.push(route as any);
-  };
-
-  const handleBack = () => {
+  const handlePress = (route: string) => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    router.back();
+    router.push(route as any);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <IconSymbol ios_icon_name="chevron.left" android_material_icon_name="arrow-back" size={24} color="#4F46E5" />
-        </TouchableOpacity>
-
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Aan de slag</Text>
         </View>
@@ -39,7 +33,7 @@ export default function AuthOptionsScreen() {
         <View style={styles.buttonsContainer}>
           <TouchableOpacity
             style={[styles.button, styles.primaryButton]}
-            onPress={() => handleOption("/(onboarding)/email-signup")}
+            onPress={() => handlePress('/(onboarding)/email-signup')}
             activeOpacity={0.8}
           >
             <IconSymbol ios_icon_name="envelope.fill" android_material_icon_name="email" size={20} color="#FFFFFF" />
@@ -48,7 +42,7 @@ export default function AuthOptionsScreen() {
 
           <TouchableOpacity
             style={[styles.button, styles.socialButton]}
-            onPress={() => handleOption("/(onboarding)/google-auth")}
+            onPress={() => handlePress('/(onboarding)/google-auth')}
             activeOpacity={0.8}
           >
             <IconSymbol ios_icon_name="globe" android_material_icon_name="language" size={20} color="#1F2937" />
@@ -57,7 +51,7 @@ export default function AuthOptionsScreen() {
 
           <TouchableOpacity
             style={[styles.button, styles.socialButton]}
-            onPress={() => handleOption("/(onboarding)/apple-auth")}
+            onPress={() => handlePress('/(onboarding)/apple-auth')}
             activeOpacity={0.8}
           >
             <IconSymbol ios_icon_name="apple.logo" android_material_icon_name="phone-iphone" size={20} color="#1F2937" />
@@ -66,7 +60,7 @@ export default function AuthOptionsScreen() {
 
           <TouchableOpacity
             style={[styles.button, styles.secondaryButton]}
-            onPress={() => handleOption("/(onboarding)/login")}
+            onPress={() => handlePress('/(onboarding)/login')}
             activeOpacity={0.8}
           >
             <IconSymbol ios_icon_name="person.fill" android_material_icon_name="person" size={20} color="#4F46E5" />
@@ -75,13 +69,21 @@ export default function AuthOptionsScreen() {
 
           <TouchableOpacity
             style={[styles.button, styles.secondaryButton]}
-            onPress={() => handleOption("/(onboarding)/invite-code")}
+            onPress={() => handlePress('/(onboarding)/invite-code')}
             activeOpacity={0.8}
           >
             <IconSymbol ios_icon_name="ticket.fill" android_material_icon_name="confirmation-number" size={20} color="#4F46E5" />
             <Text style={styles.secondaryButtonText}>Inloggen met uitnodigingscode</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.backButtonText}>← Terug</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -93,18 +95,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   content: {
-    flexGrow: 1,
+    flex: 1,
     padding: 24,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-between',
   },
   header: {
-    marginTop: 40,
-    marginBottom: 60,
+    marginTop: 60,
     alignItems: 'center',
   },
   title: {
@@ -114,6 +110,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   buttonsContainer: {
+    flex: 1,
+    justifyContent: 'center',
     gap: 16,
   },
   button: {
@@ -151,5 +149,13 @@ const styles = StyleSheet.create({
     color: '#4F46E5',
     fontSize: 16,
     fontWeight: '600',
+  },
+  backButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  backButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
   },
 });

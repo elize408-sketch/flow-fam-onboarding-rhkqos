@@ -1,65 +1,48 @@
 
-import { IconSymbol } from "@/components/IconSymbol";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   ScrollView,
   Platform,
   ActivityIndicator,
   Alert,
   Image,
-} from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
-import {
-  getFamilyMembers,
-  updateFamilyMemberStyle,
-  completeFamilyStyleSetup,
-  uploadAvatar,
-} from "@/utils/api";
-import { colors, commonStyles } from "@/styles/commonStyles";
-import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { IconSymbol } from '@/components/IconSymbol';
 
-// Fixed color palette (max 10 colors)
 const COLOR_PALETTE = [
-  { id: "indigo", hex: "#4F46E5", name: "Indigo" },
-  { id: "green", hex: "#22C55E", name: "Groen" },
-  { id: "orange", hex: "#F97316", name: "Oranje" },
-  { id: "red", hex: "#EF4444", name: "Rood" },
-  { id: "cyan", hex: "#06B6D4", name: "Cyaan" },
-  { id: "purple", hex: "#A855F7", name: "Paars" },
-  { id: "amber", hex: "#F59E0B", name: "Amber" },
-  { id: "pink", hex: "#EC4899", name: "Roze" },
-  { id: "lime", hex: "#84CC16", name: "Limoen" },
-  { id: "slate", hex: "#64748B", name: "Grijs" },
+  '#4F46E5', // indigo
+  '#22C55E', // green
+  '#F97316', // orange
+  '#EF4444', // red
+  '#06B6D4', // cyan
+  '#A855F7', // purple
+  '#F59E0B', // amber
+  '#EC4899', // pink
+  '#84CC16', // lime
+  '#64748B', // slate
 ];
 
 interface FamilyMember {
   id: string;
   name: string;
-  role: "parent" | "partner" | "child";
+  role: 'parent' | 'partner' | 'child';
   color?: string;
-  avatar_url?: string;
-}
-
-interface MemberStyle {
-  color: string;
   avatar_url?: string;
 }
 
 export default function FamilyStyleScreen() {
   const router = useRouter();
-  const { user } = useAuth();
   const [members, setMembers] = useState<FamilyMember[]>([]);
-  const [memberStyles, setMemberStyles] = useState<Record<string, MemberStyle>>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadFamilyMembers();
@@ -67,258 +50,161 @@ export default function FamilyStyleScreen() {
 
   const loadFamilyMembers = async () => {
     try {
-      console.log("[Family Style] Loading family members...");
-      const response = await getFamilyMembers();
-      console.log("[Family Style] Members loaded:", response.members);
+      // TODO: Backend Integration - Load family members from backend API
+      // For now, create mock data
+      const mockMembers: FamilyMember[] = [
+        { id: '1', name: 'Ouder', role: 'parent' },
+        { id: '2', name: 'Partner', role: 'partner' },
+        { id: '3', name: 'Kind 1', role: 'child' },
+      ];
       
-      setMembers(response.members);
-
-      // Initialize styles with existing colors or auto-assign first available color
-      const styles: Record<string, MemberStyle> = {};
-      const usedColors = new Set<string>();
-
-      response.members.forEach((member, index) => {
-        if (member.color) {
-          styles[member.id] = {
-            color: member.color,
-            avatar_url: member.avatar_url,
-          };
-          usedColors.add(member.color);
-        } else {
-          // Auto-assign first available color
-          const availableColor = COLOR_PALETTE.find(
-            (c) => !usedColors.has(c.hex)
-          );
-          if (availableColor) {
-            styles[member.id] = {
-              color: availableColor.hex,
-              avatar_url: member.avatar_url,
-            };
-            usedColors.add(availableColor.hex);
-          }
-        }
-      });
-
-      setMemberStyles(styles);
+      // Auto-assign first available color to each member
+      const membersWithColors = mockMembers.map((member, index) => ({
+        ...member,
+        color: COLOR_PALETTE[index % COLOR_PALETTE.length],
+      }));
+      
+      setMembers(membersWithColors);
     } catch (error) {
-      console.error("[Family Style] Error loading members:", error);
-      Alert.alert("Fout", "Kon gezinsleden niet laden");
-    } finally {
-      setLoading(false);
+      console.error('[FamilyStyle] Error loading members:', error);
     }
   };
 
   const handleColorSelect = (memberId: string, color: string) => {
-    if (Platform.OS !== "web") {
+    if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-
-    setMemberStyles((prev) => ({
-      ...prev,
-      [memberId]: {
-        ...prev[memberId],
-        color,
-      },
-    }));
+    
+    setMembers(
+      members.map((member) =>
+        member.id === memberId ? { ...member, color } : member
+      )
+    );
   };
 
   const handlePickImage = async (memberId: string) => {
-    if (Platform.OS !== "web") {
+    if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
-    // Request permissions
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Toestemming vereist",
-        "We hebben toegang tot je foto's nodig om een profielfoto te kiezen."
-      );
-      return;
-    }
-
-    // Show action sheet
     Alert.alert(
-      "Profielfoto kiezen",
-      "Kies een optie",
+      'Foto kiezen',
+      'Kies een optie',
       [
         {
-          text: "Maak foto",
+          text: 'Maak foto',
           onPress: () => takePhoto(memberId),
         },
         {
-          text: "Kies uit galerij",
+          text: 'Kies uit galerij',
           onPress: () => pickFromGallery(memberId),
         },
         {
-          text: "Annuleren",
-          style: "cancel",
+          text: 'Annuleren',
+          style: 'cancel',
         },
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
   const takePhoto = async (memberId: string) => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Toestemming vereist",
-        "We hebben toegang tot je camera nodig om een foto te maken."
-      );
+    if (status !== 'granted') {
+      Alert.alert('Fout', 'Camera toegang is vereist');
       return;
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: "images" as any,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      await uploadImage(memberId, result.assets[0].uri);
+      uploadImage(memberId, result.assets[0].uri);
     }
   };
 
   const pickFromGallery = async (memberId: string) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Fout', 'Galerij toegang is vereist');
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images" as any,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      await uploadImage(memberId, result.assets[0].uri);
+      uploadImage(memberId, result.assets[0].uri);
     }
   };
 
   const uploadImage = async (memberId: string, uri: string) => {
-    setUploadingFor(memberId);
-
     try {
-      console.log("[Family Style] Uploading image for member:", memberId);
-
-      // Create FormData
-      const formData = new FormData();
-      
-      // Get file extension
-      const uriParts = uri.split(".");
-      const fileType = uriParts[uriParts.length - 1];
-
-      // Append file to FormData
-      formData.append("avatar", {
-        uri,
-        name: `avatar-${memberId}.${fileType}`,
-        type: `image/${fileType}`,
-      } as any);
-
-      // Upload to backend
-      const response = await uploadAvatar(formData);
-      console.log("[Family Style] Upload successful:", response);
-
-      // Update local state
-      setMemberStyles((prev) => ({
-        ...prev,
-        [memberId]: {
-          ...prev[memberId],
-          avatar_url: response.avatar_url,
-        },
-      }));
-
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      // TODO: Backend Integration - Upload image to backend storage
+      setMembers(
+        members.map((member) =>
+          member.id === memberId ? { ...member, avatar_url: uri } : member
+        )
+      );
     } catch (error) {
-      console.error("[Family Style] Upload error:", error);
-      Alert.alert("Fout", "Kon foto niet uploaden");
-    } finally {
-      setUploadingFor(null);
+      console.error('[FamilyStyle] Error uploading image:', error);
+      Alert.alert('Fout', 'Foto uploaden mislukt');
     }
   };
 
-  const isColorUsed = (color: string, currentMemberId: string): boolean => {
-    return Object.entries(memberStyles).some(
-      ([memberId, style]) =>
-        memberId !== currentMemberId && style.color === color
+  const isColorUsed = (color: string, currentMemberId: string) => {
+    return members.some(
+      (member) => member.id !== currentMemberId && member.color === color
     );
   };
 
-  const allMembersHaveColors = (): boolean => {
-    return members.every((member) => memberStyles[member.id]?.color);
+  const allMembersHaveColors = () => {
+    return members.every((member) => member.color);
   };
 
-  const handleContinue = async () => {
-    if (!allMembersHaveColors()) {
-      Alert.alert("Let op", "Alle gezinsleden moeten een kleur hebben");
-      return;
-    }
-
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-
-    setSaving(true);
-
-    try {
-      console.log("[Family Style] Saving member styles...");
-
-      // Update each member's style
-      for (const member of members) {
-        const style = memberStyles[member.id];
-        if (style) {
-          console.log(`[Family Style] Updating member ${member.id}:`, style);
-          await updateFamilyMemberStyle(member.id, {
-            color: style.color,
-            avatar_url: style.avatar_url,
-          });
-        }
-      }
-
-      // Mark family style setup as complete
-      console.log("[Family Style] Marking setup as complete...");
-      await completeFamilyStyleSetup();
-
-      // Save completion status to AsyncStorage
-      await AsyncStorage.setItem("familyStyleComplete", "true");
-
-      console.log("[Family Style] Setup complete, redirecting to home...");
-      
-      // Redirect to home
-      router.replace("/(tabs)/(home)");
-    } catch (error) {
-      console.error("[Family Style] Error saving styles:", error);
-      Alert.alert("Fout", "Kon instellingen niet opslaan");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const getInitials = (name: string): string => {
+  const getInitials = (name: string) => {
     return name
-      .split(" ")
+      .split(' ')
       .map((n) => n[0])
-      .join("")
+      .join('')
       .toUpperCase()
       .slice(0, 2);
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Gezinsleden laden...</Text>
-      </View>
-    );
-  }
+  const handleContinue = async () => {
+    if (!allMembersHaveColors()) {
+      Alert.alert('Fout', 'Kies een kleur voor elk gezinslid');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      // TODO: Backend Integration - Save family member styles to backend API
+      await AsyncStorage.setItem('familyStyleComplete', 'true');
+      
+      console.log('[FamilyStyle] Family style complete');
+      router.replace('/(tabs)/(home)');
+    } catch (error: any) {
+      console.error('[FamilyStyle] Error:', error);
+      Alert.alert('Fout', error.message || 'Opslaan mislukt');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Kies kleur & foto</Text>
           <Text style={styles.subtitle}>
@@ -327,229 +213,166 @@ export default function FamilyStyleScreen() {
         </View>
 
         <View style={styles.membersContainer}>
-          {members.map((member) => {
-            const style = memberStyles[member.id];
-            const isUploading = uploadingFor === member.id;
+          {members.map((member) => (
+            <View key={member.id} style={styles.memberCard}>
+              <TouchableOpacity
+                style={[
+                  styles.avatar,
+                  { backgroundColor: member.color || '#E5E7EB' },
+                ]}
+                onPress={() => handlePickImage(member.id)}
+                activeOpacity={0.8}
+              >
+                {member.avatar_url ? (
+                  <Image
+                    source={{ uri: member.avatar_url }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Text style={styles.initials}>{getInitials(member.name)}</Text>
+                )}
+              </TouchableOpacity>
 
-            return (
-              <View key={member.id} style={styles.memberCard}>
-                {/* Avatar */}
-                <TouchableOpacity
-                  style={[
-                    styles.avatar,
-                    { backgroundColor: style?.color || colors.primary },
-                  ]}
-                  onPress={() => handlePickImage(member.id)}
-                  disabled={isUploading}
-                >
-                  {isUploading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : style?.avatar_url ? (
-                    <Image
-                      source={{ uri: style.avatar_url }}
-                      style={styles.avatarImage}
-                    />
-                  ) : (
-                    <Text style={styles.avatarInitials}>
-                      {getInitials(member.name)}
-                    </Text>
-                  )}
-                </TouchableOpacity>
+              <Text style={styles.memberName}>{member.name}</Text>
 
-                {/* Member Info */}
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{member.name}</Text>
-                  <Text style={styles.memberRole}>
-                    {member.role === "parent"
-                      ? "Ouder"
-                      : member.role === "partner"
-                      ? "Partner"
-                      : "Kind"}
-                  </Text>
-                </View>
+              <View style={styles.colorPicker}>
+                {COLOR_PALETTE.map((color) => {
+                  const used = isColorUsed(color, member.id);
+                  const selected = member.color === color;
 
-                {/* Color Picker */}
-                <View style={styles.colorPicker}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.colorPickerContent}
-                  >
-                    {COLOR_PALETTE.map((color) => {
-                      const isSelected = style?.color === color.hex;
-                      const isUsed = isColorUsed(color.hex, member.id);
-
-                      return (
-                        <TouchableOpacity
-                          key={color.id}
-                          style={[
-                            styles.colorSwatch,
-                            { backgroundColor: color.hex },
-                            isSelected && styles.colorSwatchSelected,
-                            isUsed && styles.colorSwatchDisabled,
-                          ]}
-                          onPress={() =>
-                            !isUsed && handleColorSelect(member.id, color.hex)
-                          }
-                          disabled={isUsed}
-                        >
-                          {isSelected && (
-                            <IconSymbol
-                              ios_icon_name="checkmark"
-                              android_material_icon_name="check"
-                              size={20}
-                              color="#fff"
-                            />
-                          )}
-                          {isUsed && !isSelected && (
-                            <View style={styles.colorSwatchDisabledOverlay} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
+                  return (
+                    <TouchableOpacity
+                      key={color}
+                      style={[
+                        styles.colorSwatch,
+                        { backgroundColor: color },
+                        selected && styles.colorSwatchSelected,
+                        used && styles.colorSwatchDisabled,
+                      ]}
+                      onPress={() => !used && handleColorSelect(member.id, color)}
+                      disabled={used}
+                      activeOpacity={0.8}
+                    >
+                      {selected && (
+                        <IconSymbol ios_icon_name="checkmark" android_material_icon_name="check" size={16} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            );
-          })}
+            </View>
+          ))}
         </View>
-      </ScrollView>
 
-      {/* Continue Button */}
-      <View style={styles.footer}>
         <TouchableOpacity
           style={[
-            commonStyles.primaryButton,
-            (!allMembersHaveColors() || saving) &&
-              commonStyles.primaryButtonDisabled,
+            styles.button,
+            (!allMembersHaveColors() || loading) && styles.buttonDisabled,
           ]}
           onPress={handleContinue}
-          disabled={!allMembersHaveColors() || saving}
+          disabled={!allMembersHaveColors() || loading}
+          activeOpacity={0.8}
         >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={commonStyles.primaryButtonText}>Doorgaan</Text>
+            <Text style={styles.buttonText}>Doorgaan</Text>
           )}
         </TouchableOpacity>
-      </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#FFFFFF',
   },
-  centerContent: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
+  content: {
+    flexGrow: 1,
     padding: 24,
-    paddingBottom: 120,
   },
   header: {
-    marginBottom: 32,
+    marginTop: 20,
+    marginBottom: 40,
+    alignItems: 'center',
   },
   title: {
     fontSize: 32,
-    fontWeight: "bold",
-    color: colors.text,
+    fontWeight: 'bold',
+    color: '#1F2937',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: '#6B7280',
+    textAlign: 'center',
   },
   membersContainer: {
-    gap: 24,
+    gap: 32,
   },
   memberCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    alignItems: 'center',
     gap: 16,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "center",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: '100%',
+    height: '100%',
   },
-  avatarInitials: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  memberInfo: {
-    alignItems: "center",
+  initials: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   memberName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  memberRole: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
   },
   colorPicker: {
-    marginTop: 8,
-  },
-  colorPickerContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 12,
-    paddingHorizontal: 4,
   },
   colorSwatch: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   colorSwatchSelected: {
     borderWidth: 3,
-    borderColor: "#000",
+    borderColor: '#1F2937',
   },
   colorSwatchDisabled: {
     opacity: 0.3,
   },
-  colorSwatchDisabledOverlay: {
-    position: "absolute",
-    width: 2,
-    height: 60,
-    backgroundColor: "#fff",
-    transform: [{ rotate: "45deg" }],
+  button: {
+    backgroundColor: '#4F46E5',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 20,
   },
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 24,
-    paddingBottom: Platform.OS === "ios" ? 40 : 24,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
