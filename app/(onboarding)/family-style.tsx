@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import * as Haptics from 'expo-haptics';
 import {
   View,
   Text,
@@ -10,26 +10,16 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  ActionSheetIOS,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
-
-const COLOR_PALETTE = [
-  '#4F46E5', // indigo
-  '#22C55E', // green
-  '#F97316', // orange
-  '#EF4444', // red
-  '#06B6D4', // cyan
-  '#A855F7', // purple
-  '#F59E0B', // amber
-  '#EC4899', // pink
-  '#84CC16', // lime
-  '#64748B', // slate
-];
+import { LoadingButton } from '@/components/LoadingButton';
+import React, { useState, useEffect } from 'react';
+import { authenticatedGet, authenticatedPatch, authenticatedPost, BACKEND_URL } from '@/utils/api';
 
 interface FamilyMember {
   id: string;
@@ -39,10 +29,19 @@ interface FamilyMember {
   avatar_url?: string;
 }
 
+const COLOR_PALETTE = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
+  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2',
+  '#F8B88B', '#A8E6CF'
+];
+
 export default function FamilyStyleScreen() {
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
+  const [avatarImages, setAvatarImages] = useState<Record<string, string>>({});
   const router = useRouter();
-  const [members, setMembers] = useState<FamilyMember[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadFamilyMembers();
@@ -50,85 +49,97 @@ export default function FamilyStyleScreen() {
 
   const loadFamilyMembers = async () => {
     try {
-      // TODO: Backend Integration - Load family members from backend API
-      // For now, create mock data
-      const mockMembers: FamilyMember[] = [
-        { id: '1', name: 'Ouder', role: 'parent' },
-        { id: '2', name: 'Partner', role: 'partner' },
-        { id: '3', name: 'Kind 1', role: 'child' },
-      ];
+      setLoading(true);
+      console.log('[FamilyStyle] Loading family members...');
+      const response = await authenticatedGet<{ members: FamilyMember[] }>('/api/families/members');
+      const members = response.members || [];
+      console.log('[FamilyStyle] Loaded members:', members.length);
+      setFamilyMembers(members);
+
+      // Initialize colors and avatars
+      const colors: Record<string, string> = {};
+      const avatars: Record<string, string> = {};
       
-      // Auto-assign first available color to each member
-      const membersWithColors = mockMembers.map((member, index) => ({
-        ...member,
-        color: COLOR_PALETTE[index % COLOR_PALETTE.length],
-      }));
-      
-      setMembers(membersWithColors);
+      members.forEach((member, index) => {
+        colors[member.id] = member.color || COLOR_PALETTE[index % COLOR_PALETTE.length];
+        if (member.avatar_url) {
+          avatars[member.id] = member.avatar_url;
+        }
+      });
+
+      setSelectedColors(colors);
+      setAvatarImages(avatars);
+      console.log('[FamilyStyle] Initialized colors:', colors);
     } catch (error) {
-      console.error('[FamilyStyle] Error loading members:', error);
+      console.error('[FamilyStyle] Error loading family members:', error);
+      Alert.alert('Fout', 'Kon gezinsleden niet laden');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleColorSelect = (memberId: string, color: string) => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    
-    setMembers(
-      members.map((member) =>
-        member.id === memberId ? { ...member, color } : member
-      )
-    );
+    console.log('[FamilyStyle] Color selected for member:', memberId, color);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedColors(prev => ({ ...prev, [memberId]: color }));
   };
 
   const handlePickImage = async (memberId: string) => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    console.log('[FamilyStyle] Pick image for member:', memberId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    Alert.alert(
-      'Foto kiezen',
-      'Kies een optie',
-      [
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
         {
-          text: 'Maak foto',
-          onPress: () => takePhoto(memberId),
+          options: ['Annuleren', 'Maak foto', 'Kies uit galerij'],
+          cancelButtonIndex: 0,
         },
-        {
-          text: 'Kies uit galerij',
-          onPress: () => pickFromGallery(memberId),
-        },
-        {
-          text: 'Annuleren',
-          style: 'cancel',
-        },
-      ]
-    );
+        async (buttonIndex) => {
+          if (buttonIndex === 1) {
+            await takePhoto(memberId);
+          } else if (buttonIndex === 2) {
+            await pickFromGallery(memberId);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Foto kiezen',
+        'Kies een optie',
+        [
+          { text: 'Annuleren', style: 'cancel' },
+          { text: 'Maak foto', onPress: () => takePhoto(memberId) },
+          { text: 'Kies uit galerij', onPress: () => pickFromGallery(memberId) },
+        ]
+      );
+    }
   };
 
   const takePhoto = async (memberId: string) => {
+    console.log('[FamilyStyle] Taking photo for member:', memberId);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Fout', 'Camera toegang is vereist');
+      Alert.alert('Toestemming vereist', 'We hebben toegang tot je camera nodig');
       return;
     }
 
     const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      uploadImage(memberId, result.assets[0].uri);
+      await uploadImage(memberId, result.assets[0].uri);
     }
   };
 
   const pickFromGallery = async (memberId: string) => {
+    console.log('[FamilyStyle] Picking from gallery for member:', memberId);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Fout', 'Galerij toegang is vereist');
+      Alert.alert('Toestemming vereist', 'We hebben toegang tot je fotobibliotheek nodig');
       return;
     }
 
@@ -140,146 +151,194 @@ export default function FamilyStyleScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      uploadImage(memberId, result.assets[0].uri);
+      await uploadImage(memberId, result.assets[0].uri);
     }
   };
 
   const uploadImage = async (memberId: string, uri: string) => {
     try {
-      // TODO: Backend Integration - Upload image to backend storage
-      setMembers(
-        members.map((member) =>
-          member.id === memberId ? { ...member, avatar_url: uri } : member
-        )
-      );
+      console.log('[FamilyStyle] Uploading image for member:', memberId);
+      // TODO: Backend Integration - Upload avatar image to backend storage
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        type: 'image/jpeg',
+        name: `avatar-${memberId}.jpg`,
+      } as any);
+
+      const response = await fetch(`${BACKEND_URL}/api/upload/avatar`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('[FamilyStyle] Upload failed:', response.status);
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      console.log('[FamilyStyle] Upload successful:', data);
+      setAvatarImages(prev => ({ ...prev, [memberId]: data.url }));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('[FamilyStyle] Error uploading image:', error);
-      Alert.alert('Fout', 'Foto uploaden mislukt');
+      Alert.alert('Fout', 'Kon foto niet uploaden');
     }
   };
 
-  const isColorUsed = (color: string, currentMemberId: string) => {
-    return members.some(
-      (member) => member.id !== currentMemberId && member.color === color
+  const isColorUsed = (color: string, currentMemberId: string): boolean => {
+    // A color is only disabled if it's used by ANOTHER member (not the current one)
+    return Object.entries(selectedColors).some(
+      ([id, selectedColor]) => id !== currentMemberId && selectedColor === color
     );
   };
 
-  const allMembersHaveColors = () => {
-    return members.every((member) => member.color);
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const allMembersHaveColors = (): boolean => {
+    return familyMembers.every(member => selectedColors[member.id]);
   };
 
   const handleContinue = async () => {
     if (!allMembersHaveColors()) {
-      Alert.alert('Fout', 'Kies een kleur voor elk gezinslid');
+      Alert.alert('Kies kleuren', 'Kies een kleur voor elk gezinslid');
       return;
     }
 
     try {
-      setLoading(true);
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      setSaving(true);
+      console.log('[FamilyStyle] Saving family style...');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // TODO: Backend Integration - Save family member styles to backend API
+      // TODO: Backend Integration - Save each member's color and avatar to backend
+      await Promise.all(
+        familyMembers.map(member => {
+          console.log('[FamilyStyle] Saving style for member:', member.id, {
+            color: selectedColors[member.id],
+            avatar_url: avatarImages[member.id] || null,
+          });
+          return authenticatedPatch(`/api/families/members/${member.id}/style`, {
+            color: selectedColors[member.id],
+            avatar_url: avatarImages[member.id] || null,
+          });
+        })
+      );
+
+      // TODO: Backend Integration - Mark family style setup as complete
+      await authenticatedPost('/api/families/complete-style', {});
+
+      // Save completion status locally
       await AsyncStorage.setItem('familyStyleComplete', 'true');
+      console.log('[FamilyStyle] Family style saved successfully');
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      console.log('[FamilyStyle] Family style complete');
+      // Always navigate to home after successful save
+      console.log('[FamilyStyle] Navigating to home...');
       router.replace('/(tabs)/(home)');
-    } catch (error: any) {
-      console.error('[FamilyStyle] Error:', error);
-      Alert.alert('Fout', error.message || 'Opslaan mislukt');
+    } catch (error) {
+      console.error('[FamilyStyle] Error saving family style:', error);
+      Alert.alert('Fout', 'Kon stijl niet opslaan. Probeer opnieuw.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Gezinsleden laden...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Kies kleur & foto</Text>
           <Text style={styles.subtitle}>
-            Maak je gezinsleden herkenbaar in de app
+            Personaliseer elk gezinslid met een kleur en foto
           </Text>
         </View>
 
-        <View style={styles.membersContainer}>
-          {members.map((member) => (
-            <View key={member.id} style={styles.memberCard}>
-              <TouchableOpacity
-                style={[
-                  styles.avatar,
-                  { backgroundColor: member.color || '#E5E7EB' },
-                ]}
-                onPress={() => handlePickImage(member.id)}
-                activeOpacity={0.8}
-              >
-                {member.avatar_url ? (
-                  <Image
-                    source={{ uri: member.avatar_url }}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <Text style={styles.initials}>{getInitials(member.name)}</Text>
-                )}
-              </TouchableOpacity>
+        {familyMembers.map((member, index) => (
+          <View key={member.id} style={styles.memberCard}>
+            <Text style={styles.memberName}>{member.name}</Text>
+            
+            <TouchableOpacity
+              style={[
+                styles.avatarCircle,
+                selectedColors[member.id] && { borderColor: selectedColors[member.id] }
+              ]}
+              onPress={() => handlePickImage(member.id)}
+              activeOpacity={0.7}
+            >
+              {avatarImages[member.id] ? (
+                <Image
+                  source={{ uri: avatarImages[member.id] }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <IconSymbol 
+                  ios_icon_name="camera.fill" 
+                  android_material_icon_name="camera" 
+                  size={40} 
+                  color="#999" 
+                />
+              )}
+            </TouchableOpacity>
 
-              <Text style={styles.memberName}>{member.name}</Text>
+            <View style={styles.colorGrid}>
+              {COLOR_PALETTE.map((color, colorIndex) => {
+                const isSelected = selectedColors[member.id] === color;
+                const isDisabled = isColorUsed(color, member.id);
 
-              <View style={styles.colorPicker}>
-                {COLOR_PALETTE.map((color) => {
-                  const used = isColorUsed(color, member.id);
-                  const selected = member.color === color;
-
-                  return (
-                    <TouchableOpacity
-                      key={color}
-                      style={[
-                        styles.colorSwatch,
-                        { backgroundColor: color },
-                        selected && styles.colorSwatchSelected,
-                        used && styles.colorSwatchDisabled,
-                      ]}
-                      onPress={() => !used && handleColorSelect(member.id, color)}
-                      disabled={used}
-                      activeOpacity={0.8}
-                    >
-                      {selected && (
-                        <IconSymbol ios_icon_name="checkmark" android_material_icon_name="check" size={16} color="#FFFFFF" />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                return (
+                  <TouchableOpacity
+                    key={`${member.id}-${color}-${colorIndex}`}
+                    style={[
+                      styles.colorSwatch,
+                      { backgroundColor: color },
+                      isSelected && styles.colorSwatchSelected,
+                      isDisabled && styles.colorSwatchDisabled,
+                    ]}
+                    onPress={() => !isDisabled && handleColorSelect(member.id, color)}
+                    disabled={isDisabled}
+                    activeOpacity={0.7}
+                  >
+                    {isSelected && (
+                      <IconSymbol 
+                        ios_icon_name="checkmark" 
+                        android_material_icon_name="check" 
+                        size={20} 
+                        color="#fff" 
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.button,
-            (!allMembersHaveColors() || loading) && styles.buttonDisabled,
-          ]}
-          onPress={handleContinue}
-          disabled={!allMembersHaveColors() || loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Doorgaan</Text>
-          )}
-        </TouchableOpacity>
+          </View>
+        ))}
       </ScrollView>
+
+      <View style={styles.footer}>
+        <LoadingButton
+          title="Doorgaan"
+          onPress={handleContinue}
+          loading={saving}
+          disabled={!allMembersHaveColors()}
+          style={styles.continueButton}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -287,92 +346,109 @@ export default function FamilyStyleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F9FA',
   },
-  content: {
-    flexGrow: 1,
-    padding: 24,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 100,
   },
   header: {
-    marginTop: 20,
-    marginBottom: 40,
-    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: '#1A1A1A',
     marginBottom: 8,
-    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  membersContainer: {
-    gap: 32,
+    color: '#666',
+    lineHeight: 22,
   },
   memberCard: {
-    alignItems: 'center',
-    gap: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  memberName: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  avatarCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    alignSelf: 'center',
+    marginBottom: 20,
+    borderWidth: 4,
+    borderColor: '#E0E0E0',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 56,
   },
-  initials: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  memberName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  colorPicker: {
+  colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: 12,
   },
   colorSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   colorSwatchSelected: {
     borderWidth: 3,
-    borderColor: '#1F2937',
+    borderColor: '#fff',
+    shadowOpacity: 0.3,
+    transform: [{ scale: 1.1 }],
   },
   colorSwatchDisabled: {
     opacity: 0.3,
   },
-  button: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 20,
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
+  continueButton: {
+    width: '100%',
   },
 });
