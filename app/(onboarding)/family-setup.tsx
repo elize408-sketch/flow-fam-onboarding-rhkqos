@@ -156,12 +156,9 @@ export default function FamilySetupScreen() {
 
       console.log("[Family Setup] Family created successfully:", response);
 
-      Alert.alert("Gelukt!", "Je gezin is aangemaakt", [
-        {
-          text: "Doorgaan",
-          onPress: () => router.replace("/(onboarding)/family-style"),
-        },
-      ]);
+      // Automatically redirect to family-style screen
+      console.log("[Family Setup] Redirecting to family-style...");
+      router.replace("/(onboarding)/family-style");
     } catch (error: any) {
       console.error("[Family Setup] Error creating family:", error);
       console.error("[Family Setup] Error details:", {

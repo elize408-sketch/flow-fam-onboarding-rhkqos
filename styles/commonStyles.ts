@@ -10,6 +10,8 @@ export const colors = {
   accent: '#10B981',
   card: '#FFFFFF',
   highlight: '#EEF2FF',
+  border: '#E5E7EB',
+  error: '#EF4444',
 };
 
 export const buttonStyles = StyleSheet.create({
@@ -94,4 +96,22 @@ export const commonStyles = StyleSheet.create({
     height: 60,
     tintColor: colors.primary,
   },
+  primaryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  } as ViewStyle,
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  } as TextStyle,
+  primaryButtonDisabled: {
+    backgroundColor: colors.textSecondary,
+    opacity: 0.5,
+  } as ViewStyle,
 });
