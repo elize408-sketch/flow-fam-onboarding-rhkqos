@@ -17,10 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/contexts/AuthContext';
 import { IconSymbol } from '@/components/IconSymbol';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, fetchUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,15 +41,42 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!validateForm()) return;
 
+    setLoading(true);
+    console.log('[Login] Starting login for:', email);
+
     try {
-      setLoading(true);
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
       await signInWithEmail(email, password);
+      console.log('[Login] Login successful, fetching user...');
+
+      // Wait a moment for session to be established
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // After successful login, go back to index which will route appropriately
+      // Fetch user to ensure session is ready
+      await fetchUser();
+      
+      console.log('[Login] User fetched, checking family setup status...');
+      
+      // Check if family setup is complete
+      const session = await import('@/lib/auth').then(m => m.authClient.getSession());
+      const userId = session.data?.user?.id;
+      
+      if (userId) {
+        const familySetupComplete = await AsyncStorage.getItem(`familySetupComplete_${userId}`);
+        console.log('[Login] Family setup status:', familySetupComplete);
+        
+        if (!familySetupComplete || familySetupComplete === 'false') {
+          console.log('[Login] → Redirecting to family-setup');
+          router.replace('/(onboarding)/family-setup');
+          return;
+        }
+      }
+      
+      // If family setup is complete, go to index which will route appropriately
+      console.log('[Login] → Redirecting to index for routing');
       router.replace('/');
     } catch (error: any) {
       console.error('[Login] Error:', error);

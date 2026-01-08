@@ -14,34 +14,31 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
-import { useAuth } from '@/contexts/AuthContext';
 import { IconSymbol } from '@/components/IconSymbol';
+import { useAuth } from '@/contexts/AuthContext';
+import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function EmailSignUpScreen() {
   const router = useRouter();
-  const { signUpWithEmail } = useAuth();
-  const [name, setName] = useState('');
+  const { signUpWithEmail, fetchUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
   const validateForm = () => {
-    if (!name.trim()) {
-      Alert.alert('Fout', 'Vul je naam in');
-      return false;
-    }
-    if (!email.trim() || !email.includes('@')) {
-      Alert.alert('Fout', 'Vul een geldig e-mailadres in');
-      return false;
-    }
-    if (password.length < 8) {
-      Alert.alert('Fout', 'Wachtwoord moet minimaal 8 tekens zijn');
+    if (!email || !password || !confirmPassword) {
+      Alert.alert('Fout', 'Vul alle velden in');
       return false;
     }
     if (password !== confirmPassword) {
       Alert.alert('Fout', 'Wachtwoorden komen niet overeen');
+      return false;
+    }
+    if (password.length < 8) {
+      Alert.alert('Fout', 'Wachtwoord moet minimaal 8 tekens bevatten');
       return false;
     }
     return true;
@@ -50,102 +47,105 @@ export default function EmailSignUpScreen() {
   const handleSignUp = async () => {
     if (!validateForm()) return;
 
-    try {
-      setLoading(true);
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
 
-      await signUpWithEmail(email, password, name);
+    setLoading(true);
+    console.log('[EmailSignUp] Starting signup for:', email);
+
+    try {
+      await signUpWithEmail(email, password, name || undefined);
+      console.log('[EmailSignUp] Signup successful, fetching user...');
+
+      // Wait a moment for session to be established
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // After successful signup, redirect to family setup
+      // Fetch user to ensure session is ready
+      await fetchUser();
+      
+      console.log('[EmailSignUp] User fetched, redirecting to family-setup');
+      
+      // Navigate to family setup
       router.replace('/(onboarding)/family-setup');
     } catch (error: any) {
-      console.error('[EmailSignUp] Error:', error);
-      Alert.alert('Fout', error.message || 'Account aanmaken mislukt');
+      console.error('[EmailSignUp] Signup failed:', error);
+      Alert.alert(
+        'Aanmelden mislukt',
+        error.message || 'Er is een fout opgetreden. Probeer het opnieuw.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
-            activeOpacity={0.8}
           >
-            <IconSymbol ios_icon_name="chevron.left" android_material_icon_name="arrow-back" size={24} color="#1F2937" />
+            <IconSymbol name="chevron.left" size={24} color="#007AFF" />
           </TouchableOpacity>
 
-          <View style={styles.header}>
-            <Text style={styles.title}>Account aanmaken</Text>
-            <Text style={styles.subtitle}>Vul je gegevens in</Text>
-          </View>
+          <Text style={styles.title}>Account aanmaken</Text>
+          <Text style={styles.subtitle}>
+            Maak een account aan om te beginnen
+          </Text>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Naam</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Je volledige naam"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                autoComplete="name"
-              />
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Naam (optioneel)"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>E-mail</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="je@email.com"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="E-mailadres"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Wachtwoord</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Minimaal 8 tekens"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Wachtwoord"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Bevestig wachtwoord</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Herhaal je wachtwoord"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Bevestig wachtwoord"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
 
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleSignUp}
               disabled={loading}
-              activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.buttonText}>Account aanmaken</Text>
               )}
@@ -160,12 +160,12 @@ export default function EmailSignUpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
   },
   keyboardView: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     flexGrow: 1,
     padding: 24,
   },
@@ -173,53 +173,45 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     justifyContent: 'center',
-    marginBottom: 20,
-  },
-  header: {
-    marginBottom: 40,
+    marginBottom: 16,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1F2937',
     marginBottom: 8,
+    color: '#000',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#666',
+    marginBottom: 32,
   },
   form: {
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    gap: 16,
   },
   input: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 12,
+    paddingHorizontal: 16,
     fontSize: 16,
-    color: '#1F2937',
+    backgroundColor: '#f9f9f9',
   },
   button: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 16,
+    height: 50,
+    backgroundColor: '#007AFF',
     borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });
