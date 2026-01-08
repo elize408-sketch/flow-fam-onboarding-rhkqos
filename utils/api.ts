@@ -1,3 +1,4 @@
+
 /**
  * API Utilities - Backend Integration Complete ✅
  *
@@ -6,12 +7,12 @@
  *
  * Features:
  * ✅ Automatic backend URL configuration from app.json
- * ✅ Bearer token management (SecureStore on native, localStorage on web)
+ * ✅ Cookie-based authentication with Better Auth
  * ✅ Type-safe request/response handling with TypeScript
  * ✅ Comprehensive error handling with logging
  * ✅ Helper functions for all API endpoints
  * ✅ File upload support with multipart/form-data
- * ✅ Automatic token injection for authenticated requests
+ * ✅ Automatic cookie injection for authenticated requests
  *
  * Backend URL: https://22m6pxpwrn7zbf8z6sj655eutz2eucag.app.specular.dev
  *
@@ -46,8 +47,7 @@
  */
 
 import Constants from "expo-constants";
-import { Platform } from "react-native";
-import * as SecureStore from "expo-secure-store";
+import { authClient } from "@/lib/auth";
 
 /**
  * Backend URL is configured in app.json under expo.extra.backendUrl
@@ -59,12 +59,6 @@ export const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || "";
 console.log("[API] Backend URL configured:", BACKEND_URL);
 
 /**
- * Bearer token storage key
- * Must match the key used in lib/auth.ts
- */
-const BEARER_TOKEN_KEY = "natively_bearer_token";
-
-/**
  * Check if backend is properly configured
  */
 export const isBackendConfigured = (): boolean => {
@@ -72,21 +66,19 @@ export const isBackendConfigured = (): boolean => {
 };
 
 /**
- * Get bearer token from platform-specific storage
- * Web: localStorage
- * Native: SecureStore
+ * Get authentication cookies from Better Auth
+ * Better Auth stores session as cookies, not bearer tokens
  *
- * @returns Bearer token or null if not found
+ * @returns Cookie string or null if not found
  */
 export const getBearerToken = async (): Promise<string | null> => {
   try {
-    if (Platform.OS === "web") {
-      return localStorage.getItem(BEARER_TOKEN_KEY);
-    } else {
-      return await SecureStore.getItemAsync(BEARER_TOKEN_KEY);
-    }
+    console.log("[API] Getting authentication cookies from Better Auth...");
+    const cookies = authClient.getCookie();
+    console.log("[API] Cookies retrieved:", !!cookies);
+    return cookies || null;
   } catch (error) {
-    console.error("[API] Error retrieving bearer token:", error);
+    console.error("[API] Error retrieving authentication cookies:", error);
     return null;
   }
 };
@@ -189,33 +181,58 @@ export const apiDelete = async <T = any>(endpoint: string): Promise<T> => {
 
 /**
  * Authenticated API call helper
- * Automatically retrieves bearer token from storage and adds to Authorization header
+ * Automatically retrieves session cookies from Better Auth and adds to Cookie header
  *
  * @param endpoint - API endpoint path
  * @param options - Fetch options (method, headers, body, etc.)
  * @returns Parsed JSON response
- * @throws Error if token not found or request fails
+ * @throws Error if session not found or request fails
  */
 export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> => {
-  const token = await getBearerToken();
+  // Get cookies from Better Auth
+  const cookies = authClient.getCookie();
 
-  if (!token) {
-    console.error("[API] No authentication token found");
+  if (!cookies) {
+    console.error("[API] No authentication session found");
     throw new Error("Authentication token not found. Please sign in.");
   }
 
-  console.log("[API] Making authenticated request with token");
+  console.log("[API] Making authenticated request with cookies");
 
-  return apiCall<T>(endpoint, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  if (!isBackendConfigured()) {
+    throw new Error("Backend URL not configured. Please rebuild the app.");
+  }
+
+  const url = `${BACKEND_URL}${endpoint}`;
+  console.log("[API] Authenticated call to:", url, options?.method || "GET");
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        Cookie: cookies,
+      },
+      credentials: "omit", // Don't send browser cookies, we're setting them manually
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[API] Error response:", response.status, text);
+      throw new Error(`API error: ${response.status} - ${text}`);
+    }
+
+    const data = await response.json();
+    console.log("[API] Success:", data);
+    return data;
+  } catch (error) {
+    console.error("[API] Request failed:", error);
+    throw error;
+  }
 };
 
 /**
@@ -283,10 +300,11 @@ export const authenticatedUpload = async <T = any>(
   endpoint: string,
   formData: FormData
 ): Promise<T> => {
-  const token = await getBearerToken();
+  // Get cookies from Better Auth
+  const cookies = authClient.getCookie();
 
-  if (!token) {
-    console.error("[API] No authentication token found");
+  if (!cookies) {
+    console.error("[API] No authentication session found");
     throw new Error("Authentication token not found. Please sign in.");
   }
 
@@ -301,10 +319,11 @@ export const authenticatedUpload = async <T = any>(
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Cookie: cookies,
         // Don't set Content-Type for FormData - browser will set it with boundary
       },
       body: formData,
+      credentials: "omit", // Don't send browser cookies, we're setting them manually
     });
 
     if (!response.ok) {
